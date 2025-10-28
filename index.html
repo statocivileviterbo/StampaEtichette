@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Etichette A4 - Sicurezza focus Annulla</title>
+  <style>
+    @page { size: A4; margin: 5mm 0 5mm 0; }
+    html, body { height: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; background: #fff; }
+    #sheet {
+      width: 210mm; height: 287mm;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(6, 1fr);
+      margin: 0 auto;
+      background: #fff;
+      box-sizing: border-box;
+    }
+    .label {
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+      font-size: 10pt;
+      padding: 2mm 4mm;
+      background: none;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      min-height: 0; min-width: 0;
+      position: relative;
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+    .label:hover { background: #e8f0fa; }
+    .label-content {
+      width: 100%;
+      white-space: pre-line;
+      font-family: Arial, sans-serif;
+      font-size: 10pt;
+      color: #111;
+      pointer-events: none;
+      z-index: 2;
+      position: relative;
+    }
+    .watermark {
+      display: flex; align-items: center; justify-content: center;
+      position: absolute; z-index: 1; inset: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      font-family: Arial, sans-serif;
+      font-size: 62pt;
+      font-weight: bold;
+      color: #bcd;
+      opacity: 0.37;
+      text-align: center;
+      letter-spacing: 0.1em;
+      user-select: none;
+      transition: opacity 0.2s;
+    }
+    .label[filled="1"] .watermark { opacity: 0 !important; pointer-events: none !important; }
+
+    #actions-bar {
+      display: flex; gap: 16px; justify-content: center;
+      margin: 20px auto 18px auto; align-items: center;
+    }
+    .action-btn {
+      padding: 12px 34px;
+      font-size: 18px;
+      background: #1d72b8;
+      color: #fff;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: Arial, sans-serif;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    .action-btn:hover { background: #145283; }
+
+    #overlay {
+      display: none; position: fixed;
+      top:0; left:0; right:0; bottom:0;
+      background: rgba(0,0,0,0.18);
+      z-index: 100; align-items: center; justify-content: center;
+    }
+    #modal-form {
+      display: flex; flex-direction: column; gap: 18px;
+      padding: 38px 60px; background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.17); min-width: 630px; max-width: 98vw; min-height: 380px;
+    }
+    #modal-form input[type='text'] {
+      font-size: 1.17em; font-family: Arial, sans-serif;
+      padding: 8px 10px; border: 1px solid #999;
+      width: 100%; box-sizing: border-box; border-radius: 2px;
+    }
+    #modal-form textarea {
+      font-size: 1.12em; font-family: Arial, sans-serif;
+      padding: 13px 12px; border: 1px solid #999;
+      width: 100%; min-height: 190px; border-radius: 2px; box-sizing: border-box;
+    }
+    #modal-form label { font-size: 1em; font-weight: bold; }
+    #modal-form .form-row { display: flex; flex-direction: column; gap: 5px; }
+    #modal-form .actions { display: flex; gap: 22px; margin-top: 16px; justify-content: flex-end; }
+    #modal-form button {
+      padding: 10px 24px; font-size: 1.1em; border-radius: 3px;
+      border: none; background: #1d72b8; color: #fff; cursor: pointer;
+      font-weight: bold; transition: background .13s;
+    }
+    #modal-form button:hover { background: #15548c; }
+    #cancella-cella {
+      background: #e44; color: #fff;
+      margin-right: auto; font-weight: bold; font-size: 1.05em;
+      border-radius: 3px; border: none; padding: 10px 24px;
+      cursor: pointer; transition: background 0.15s;
+    }
+    #cancella-cella:hover { background: #a10; }
+
+    /* MODALE DI CONFERMA custom */
+    #confirm-overlay {
+      display:none; position:fixed; top:0; left:0;right:0;bottom:0; background:rgba(0,0,0,0.18); z-index:200;
+      align-items:center; justify-content:center;
+    }
+    #confirm-box {
+      background:#fff; border-radius:9px; padding:38px 45px; min-width:340px; max-width:93vw;
+      box-shadow:0 8px 38px rgba(0,0,0,0.19);
+      font-family:Arial,sans-serif;
+      display:flex; flex-direction:column; gap:28px;
+    }
+    #confirm-box .msg { font-size:1.18em; color:#222;}
+    #confirm-box .cf-btns { display:flex; gap:16px; justify-content:flex-end;}
+    .cf-btn { padding:10px 27px; border:none; border-radius:3px; font-size:1.11em; font-weight:bold; cursor:pointer; }
+    .cf-ok { background:#1d72b8;color:#fff;}
+    .cf-ok:hover {background:#15548c;}
+    .cf-cancel { background:#bbb;color:#333;}
+    .cf-cancel:hover {background:#888;}
+
+    @media print {
+      #actions-bar, #overlay, .watermark, #confirm-overlay { display: none !important; }
+      body, html { background: #fff !important; }
+      #sheet { display: grid !important; }
+      .label { background: none !important; box-shadow: none !important; cursor: default !important; }
+      .label:hover { background: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Barra azioni per stampa/resetta -->
+  <div id="actions-bar">
+    <button id="print-btn" class="action-btn">Stampa PDF</button>
+    <button id="reset-btn" class="action-btn" style="background:#e44;">Cancella tutto</button>
+  </div>
+  <div id="sheet">
+    <!-- 12 etichette con filigrana numerica -->
+    <div class="label" data-idx="0" filled="0"><div class="label-content"></div><div class="watermark">1</div></div>
+    <div class="label" data-idx="1" filled="0"><div class="label-content"></div><div class="watermark">2</div></div>
+    <div class="label" data-idx="2" filled="0"><div class="label-content"></div><div class="watermark">3</div></div>
+    <div class="label" data-idx="3" filled="0"><div class="label-content"></div><div class="watermark">4</div></div>
+    <div class="label" data-idx="4" filled="0"><div class="label-content"></div><div class="watermark">5</div></div>
+    <div class="label" data-idx="5" filled="0"><div class="label-content"></div><div class="watermark">6</div></div>
+    <div class="label" data-idx="6" filled="0"><div class="label-content"></div><div class="watermark">7</div></div>
+    <div class="label" data-idx="7" filled="0"><div class="label-content"></div><div class="watermark">8</div></div>
+    <div class="label" data-idx="8" filled="0"><div class="label-content"></div><div class="watermark">9</div></div>
+    <div class="label" data-idx="9" filled="0"><div class="label-content"></div><div class="watermark">10</div></div>
+    <div class="label" data-idx="10" filled="0"><div class="label-content"></div><div class="watermark">11</div></div>
+    <div class="label" data-idx="11" filled="0"><div class="label-content"></div><div class="watermark">12</div></div>
+  </div>
+  <!-- Overlay/Modal inserimento e modifica -->
+  <div id="overlay">
+    <form id="modal-form" autocomplete="off">
+      <div class="form-row">
+        <label for="num-atto">Numero atto:</label>
+        <input type="text" id="num-atto" maxlength="30" required>
+      </div>
+      <div class="form-row">
+        <label for="annotazione">Annotazione:</label>
+        <textarea id="annotazione" maxlength="800" required></textarea>
+      </div>
+      <div class="form-row">
+        <label for="city-date">Città/Data:</label>
+        <input type="text" id="city-date" maxlength="40" required>
+      </div>
+      <div class="actions">
+        <button type="button" id="cancella-cella">Cancella cella</button>
+        <button type="button" id="annulla">Annulla</button>
+        <button type="submit">OK</button>
+      </div>
+    </form>
+  </div>
+  <!-- Overlay per modale conferma custom -->
+  <div id="confirm-overlay">
+    <div id="confirm-box">
+      <div class="msg" id="confirm-msg"></div>
+      <div class="cf-btns">
+        <button class="cf-btn cf-cancel" id="cf-cancel" type="button">Annulla</button>
+        <button class="cf-btn cf-ok" id="cf-ok" type="button">Conferma</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Utility: modale di conferma custom, focus su "Annulla" sempre.
+    function showConfirm(msg, cb) {
+      const overlay = document.getElementById('confirm-overlay');
+      const m = document.getElementById('confirm-msg');
+      const bCancel = document.getElementById('cf-cancel');
+      const bOk = document.getElementById('cf-ok');
+      m.textContent = msg;
+      overlay.style.display = 'flex';
+      setTimeout(function(){ bCancel.focus(); }, 180);
+      bCancel.onclick = function(){
+        overlay.style.display = 'none';
+        cb(false);
+      };
+      bOk.onclick = function(){
+        overlay.style.display = 'none';
+        cb(true);
+      };
+      overlay.onkeydown = function(e){
+        if(e.key==="Escape"){
+          overlay.style.display = 'none';
+          cb(false);
+        }
+      }
+    }
+    function getDataOggi() {
+      let d = new Date();
+      return ("0"+d.getDate()).slice(-2)+'/'+("0"+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();
+    }
+    const etichette = Array(12).fill().map(()=>({atto:"",nota:"",cd:""}));
+    let currentIdx = null;
+    const overlay = document.getElementById("overlay");
+    const modal = document.getElementById("modal-form");
+    const inputAtto = document.getElementById("num-atto");
+    const inputNota = document.getElementById("annotazione");
+    const inputCd = document.getElementById("city-date");
+    const btnAnnulla = document.getElementById("annulla");
+    const btnCancellaCella = document.getElementById("cancella-cella");
+    const btnPrint = document.getElementById("print-btn");
+    const btnReset = document.getElementById("reset-btn");
+
+    function aggiornaEtichetta(idx) {
+      let txt = '';
+      if(etichette[idx].atto) txt += etichette[idx].atto + '\n';
+      if(etichette[idx].nota) txt += etichette[idx].nota + '\n';
+      if(etichette[idx].cd) txt += etichette[idx].cd;
+      document.querySelector(`.label[data-idx="${idx}"] .label-content`).textContent = txt.trim();
+      let wasFilled = (etichette[idx].atto||etichette[idx].nota||etichette[idx].cd)? "1" : "0";
+      document.querySelector(`.label[data-idx="${idx}"]`).setAttribute('filled', wasFilled);
+    }
+    function resetEtichette() {
+      for(let idx=0; idx<12; ++idx) {
+        etichette[idx] = {atto:"",nota:"",cd:""};
+        aggiornaEtichetta(idx);
+      }
+    }
+    document.querySelectorAll('.label').forEach(function(lab, idx){
+      lab.addEventListener("click", function(e){
+        currentIdx = idx;
+        inputAtto.value = etichette[idx].atto || '';
+        inputNota.value = etichette[idx].nota || '';
+        inputCd.value = etichette[idx].cd || ('Viterbo, ' + getDataOggi());
+        overlay.style.display = "flex";
+        setTimeout(()=>inputAtto.focus(),150);
+      });
+    });
+    btnAnnulla.addEventListener("click", function(){
+      overlay.style.display = "none";
+    });
+    btnCancellaCella.addEventListener("click",function(){
+      if(currentIdx===null) return;
+      showConfirm('Vuoi cancellare la cella selezionata?', function(ok){
+        if(ok){
+          etichette[currentIdx] = {atto:"",nota:"",cd:""};
+          aggiornaEtichetta(currentIdx);
+          overlay.style.display = "none";
+          currentIdx = null;
+        } else {
+          setTimeout(() => btnAnnulla.focus(),100); // Resta sul pulsante Annulla
+        }
+      });
+    });
+    modal.addEventListener("submit", function(e){
+      e.preventDefault();
+      if(currentIdx === null) return;
+      etichette[currentIdx] = {
+        atto: inputAtto.value.trim(),
+        nota: inputNota.value.trim(),
+        cd: inputCd.value.trim()
+      };
+      aggiornaEtichetta(currentIdx);
+      overlay.style.display = "none";
+      currentIdx = null;
+    });
+    window.addEventListener("keydown", function(e){
+      if(e.key==="Escape" && overlay.style.display==="flex")
+        overlay.style.display = "none";
+    });
+    btnReset.addEventListener("click", function(){
+      showConfirm('Vuoi cancellare il contenuto di tutte le etichette?', function(ok){
+        if(ok) resetEtichette();
+        else setTimeout(()=>btnPrint.focus(),100);
+      });
+    });
+    btnPrint.addEventListener("click", function(){
+      window.print();
+    });
+    window.onafterprint = function() {
+      setTimeout(function() {
+        showConfirm('Vuoi cancellare il contenuto di tutte le etichette?', function(ok){
+          if(ok) resetEtichette();
+          else setTimeout(()=>btnPrint.focus(),100);
+        });
+      },300);
+    };
+    // Inizializzazione
+    resetEtichette();
+  </script>
+</body>
+</html>
