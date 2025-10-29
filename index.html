@@ -21,7 +21,7 @@
       box-sizing: border-box;
       font-family: Arial, sans-serif;
       font-size: 10pt;
-      padding: 2mm 4mm; 
+      padding: 2mm 4mm;
       background: none;
       cursor: pointer;
       display: flex;
@@ -30,13 +30,14 @@
       min-height: 0;
       min-width: 0;
       position: relative;
-      overflow-wrap: break-word;
-      word-break: break-word;
+      overflow-wrap: normal;
+      word-break: keep-all;
+      white-space: pre-wrap;
     }
     .label:hover { background: #e8f0fa; }
     .label-content {
       width: 100%;
-      white-space: pre-line;
+      white-space: pre-wrap;
       font-family: Arial, sans-serif;
       font-size: 10pt;
       color: #111;
@@ -348,4 +349,3 @@
   </script>
 </body>
 </html>
-
