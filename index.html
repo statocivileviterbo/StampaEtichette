@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Etichette A4 - Gestione Campi Vuoti</title>
+  <title>Etichette A4 - Codici Integri</title>
   <style>
     @page { size: A4; margin: 5mm 0 5mm 0; }
     html, body { height: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; background: #fff; }
@@ -21,7 +21,7 @@
       box-sizing: border-box;
       font-family: Arial, sans-serif;
       font-size: 10pt;
-      padding: 2mm 4mm;
+      padding: 2mm;
       background: none;
       cursor: pointer;
       display: flex;
@@ -30,8 +30,8 @@
       min-height: 0;
       min-width: 0;
       position: relative;
-      overflow-wrap: normal;
-      word-break: keep-all;
+      overflow-wrap: break-word;
+      word-break: normal;
       white-space: pre-wrap;
     }
     .label:hover { background: #e8f0fa; }
@@ -44,6 +44,7 @@
       pointer-events: none;
       z-index: 2;
       position: relative;
+      word-break: normal;
     }
     .watermark {
       display: flex;
@@ -69,6 +70,15 @@
       opacity: 0 !important;
       pointer-events: none !important;
     }
+    
+    /* Classe per impedire line-break sui codici numerici */
+    .nowrap {
+      white-space: nowrap;
+      word-break: keep-all;
+      overflow-wrap: normal;
+      hyphens: none;
+    }
+
     #actions-bar {
       display: flex;
       gap: 16px;
@@ -247,6 +257,15 @@
       return ("0"+d.getDate()).slice(-2)+'/'+("0"+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();
     }
 
+    // Funzione per avvolgere i codici numerici con trattini in span non-breakable
+    function wrapCodici(input) {
+      if (!input) return "";
+      // Trova sequenze di cifre separate da trattini (almeno 3 gruppi, min 2 cifre per gruppo)
+      return input.replace(/\b(\d{2,}-)+\d{2,}\b/g, function(codice){
+        return '<span class="nowrap">' + codice + '</span>';
+      });
+    }
+
     const etichette = Array(12).fill().map(() => ({atto:"", nota:"", cd:""}));
     let currentIdx = null;
 
@@ -262,9 +281,15 @@
 
     function aggiornaEtichetta(idx) {
       const { atto, nota, cd } = etichette[idx];
-      let txt = [atto, nota, cd].filter(Boolean).join('\n');
-      document.querySelector(`.label[data-idx="${idx}"] .label-content`).textContent = txt;
-      const isFilled = txt.length > 0 ? "1" : "0";
+      // Applica il wrap ai codici solo nell'annotazione
+      const notaProcessed = wrapCodici(nota);
+      let txt = '';
+      if (atto) txt += atto + '\n';
+      if (notaProcessed) txt += notaProcessed + '\n';
+      if (cd) txt += cd;
+      // Usa innerHTML invece di textContent per supportare gli span
+      document.querySelector(`.label[data-idx="${idx}"] .label-content`).innerHTML = txt.trim();
+      const isFilled = (atto || nota || cd) ? "1" : "0";
       document.querySelector(`.label[data-idx="${idx}"]`).setAttribute('filled', isFilled);
     }
 
@@ -343,7 +368,6 @@
     });
 
     btnPrint.addEventListener("click", () => window.print());
-
 
     resetEtichette(); // Inizializza al caricamento
   </script>
