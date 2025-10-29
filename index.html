@@ -2,12 +2,14 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Etichette A4 - Sicurezza focus Annulla</title>
+  <title>Etichette A4 - Gestione Campi Vuoti</title>
   <style>
     @page { size: A4; margin: 5mm 0 5mm 0; }
     html, body { height: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; background: #fff; }
+
     #sheet {
-      width: 210mm; height: 287mm;
+      width: 210mm;
+      height: 287mm;
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       grid-template-rows: repeat(6, 1fr);
@@ -19,13 +21,14 @@
       box-sizing: border-box;
       font-family: Arial, sans-serif;
       font-size: 10pt;
-      padding: 2mm 4mm;
+      padding: 2mm; /* Distanza testo-bordi ridotta a 2mm */
       background: none;
       cursor: pointer;
       display: flex;
       align-items: flex-start;
       justify-content: flex-start;
-      min-height: 0; min-width: 0;
+      min-height: 0;
+      min-width: 0;
       position: relative;
       overflow-wrap: break-word;
       word-break: break-word;
@@ -42,9 +45,14 @@
       position: relative;
     }
     .watermark {
-      display: flex; align-items: center; justify-content: center;
-      position: absolute; z-index: 1; inset: 0;
-      width: 100%; height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: absolute;
+      z-index: 1;
+      inset: 0;
+      width: 100%;
+      height: 100%;
       pointer-events: none;
       font-family: Arial, sans-serif;
       font-size: 62pt;
@@ -56,11 +64,16 @@
       user-select: none;
       transition: opacity 0.2s;
     }
-    .label[filled="1"] .watermark { opacity: 0 !important; pointer-events: none !important; }
-
+    .label[filled="1"] .watermark {
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
     #actions-bar {
-      display: flex; gap: 16px; justify-content: center;
-      margin: 20px auto 18px auto; align-items: center;
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      margin: 20px auto 18px auto;
+      align-items: center;
     }
     .action-btn {
       padding: 12px 34px;
@@ -76,48 +89,66 @@
     }
     .action-btn:hover { background: #145283; }
 
+    /* MODAL/overlay form */
     #overlay {
-      display: none; position: fixed;
+      display: none;
+      position: fixed;
       top:0; left:0; right:0; bottom:0;
       background: rgba(0,0,0,0.18);
-      z-index: 100; align-items: center; justify-content: center;
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
     }
     #modal-form {
-      display: flex; flex-direction: column; gap: 18px;
-      padding: 38px 60px; background: #fff;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding: 38px 60px;
+      background: #fff;
       border-radius: 12px;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.17); min-width: 630px; max-width: 98vw; min-height: 380px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.17);
+      min-width: 630px;
+      max-width: 98vw;
+      min-height: 380px;
     }
-    #modal-form input[type='text'] {
-      font-size: 1.17em; font-family: Arial, sans-serif;
-      padding: 8px 10px; border: 1px solid #999;
-      width: 100%; box-sizing: border-box; border-radius: 2px;
+    #modal-form input[type='text'],
+    #modal-form textarea {
+      font-family: Arial, sans-serif;
+      border: 1px solid #999;
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 2px;
+      padding: 8px 10px;
+      font-size: 1.1em;
     }
     #modal-form textarea {
-      font-size: 1.12em; font-family: Arial, sans-serif;
-      padding: 13px 12px; border: 1px solid #999;
-      width: 100%; min-height: 190px; border-radius: 2px; box-sizing: border-box;
+      min-height: 190px;
+      resize: vertical;
     }
     #modal-form label { font-size: 1em; font-weight: bold; }
     #modal-form .form-row { display: flex; flex-direction: column; gap: 5px; }
-    #modal-form .actions { display: flex; gap: 22px; margin-top: 16px; justify-content: flex-end; }
+    #modal-form .actions { display: flex; gap: 22px; margin-top: 16px; justify-content: flex-end; align-items: center;}
     #modal-form button {
-      padding: 10px 24px; font-size: 1.1em; border-radius: 3px;
-      border: none; background: #1d72b8; color: #fff; cursor: pointer;
-      font-weight: bold; transition: background .13s;
+      padding: 10px 24px;
+      font-size: 1.1em;
+      border-radius: 3px;
+      border: none;
+      background: #1d72b8;
+      color: #fff;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background .13s;
     }
     #modal-form button:hover { background: #15548c; }
     #cancella-cella {
-      background: #e44; color: #fff;
-      margin-right: auto; font-weight: bold; font-size: 1.05em;
-      border-radius: 3px; border: none; padding: 10px 24px;
-      cursor: pointer; transition: background 0.15s;
+      background: #e44;
+      margin-right: auto;
     }
     #cancella-cella:hover { background: #a10; }
 
     /* MODALE DI CONFERMA custom */
     #confirm-overlay {
-      display:none; position:fixed; top:0; left:0;right:0;bottom:0; background:rgba(0,0,0,0.18); z-index:200;
+      display:none; position:fixed; top:0; left:0;right:0;bottom:0; background:rgba(0,0,0,0.2); z-index:200;
       align-items:center; justify-content:center;
     }
     #confirm-box {
@@ -126,7 +157,7 @@
       font-family:Arial,sans-serif;
       display:flex; flex-direction:column; gap:28px;
     }
-    #confirm-box .msg { font-size:1.18em; color:#222;}
+    #confirm-box .msg { font-size:1.18em; color:#222; line-height: 1.4; }
     #confirm-box .cf-btns { display:flex; gap:16px; justify-content:flex-end;}
     .cf-btn { padding:10px 27px; border:none; border-radius:3px; font-size:1.11em; font-weight:bold; cursor:pointer; }
     .cf-ok { background:#1d72b8;color:#fff;}
@@ -168,16 +199,16 @@
   <div id="overlay">
     <form id="modal-form" autocomplete="off">
       <div class="form-row">
-        <label for="num-atto">Estremi atto:</label>
-        <input type="text" id="num-atto" maxlength="30" required>
+        <label for="num-atto">Numero atto:</label>
+        <input type="text" id="num-atto" maxlength="30">
       </div>
       <div class="form-row">
         <label for="annotazione">Annotazione:</label>
-        <textarea id="annotazione" maxlength="800" required></textarea>
+        <textarea id="annotazione" maxlength="800"></textarea>
       </div>
       <div class="form-row">
         <label for="city-date">Città/Data:</label>
-        <input type="text" id="city-date" maxlength="40" required>
+        <input type="text" id="city-date" maxlength="40">
       </div>
       <div class="actions">
         <button type="button" id="cancella-cella">Cancella cella</button>
@@ -197,7 +228,6 @@
     </div>
   </div>
   <script>
-    // Utility: modale di conferma custom, focus su "Annulla" sempre.
     function showConfirm(msg, cb) {
       const overlay = document.getElementById('confirm-overlay');
       const m = document.getElementById('confirm-msg');
@@ -205,28 +235,20 @@
       const bOk = document.getElementById('cf-ok');
       m.textContent = msg;
       overlay.style.display = 'flex';
-      setTimeout(function(){ bCancel.focus(); }, 180);
-      bCancel.onclick = function(){
-        overlay.style.display = 'none';
-        cb(false);
-      };
-      bOk.onclick = function(){
-        overlay.style.display = 'none';
-        cb(true);
-      };
-      overlay.onkeydown = function(e){
-        if(e.key==="Escape"){
-          overlay.style.display = 'none';
-          cb(false);
-        }
-      }
+      setTimeout(() => bCancel.focus(), 150);
+      bCancel.onclick = () => { overlay.style.display = 'none'; cb(false); };
+      bOk.onclick = () => { overlay.style.display = 'none'; cb(true); };
+      overlay.onkeydown = e => { if(e.key === "Escape") { overlay.style.display = 'none'; cb(false); }};
     }
+
     function getDataOggi() {
       let d = new Date();
       return ("0"+d.getDate()).slice(-2)+'/'+("0"+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();
     }
-    const etichette = Array(12).fill().map(()=>({atto:"",nota:"",cd:""}));
+
+    const etichette = Array(12).fill().map(() => ({atto:"", nota:"", cd:""}));
     let currentIdx = null;
+
     const overlay = document.getElementById("overlay");
     const modal = document.getElementById("modal-form");
     const inputAtto = document.getElementById("num-atto");
@@ -238,82 +260,91 @@
     const btnReset = document.getElementById("reset-btn");
 
     function aggiornaEtichetta(idx) {
-      let txt = '';
-      if(etichette[idx].atto) txt += etichette[idx].atto + '\n';
-      if(etichette[idx].nota) txt += etichette[idx].nota + '\n';
-      if(etichette[idx].cd) txt += etichette[idx].cd;
-      document.querySelector(`.label[data-idx="${idx}"] .label-content`).textContent = txt.trim();
-      let wasFilled = (etichette[idx].atto||etichette[idx].nota||etichette[idx].cd)? "1" : "0";
-      document.querySelector(`.label[data-idx="${idx}"]`).setAttribute('filled', wasFilled);
+      const { atto, nota, cd } = etichette[idx];
+      let txt = [atto, nota, cd].filter(Boolean).join('\n');
+      document.querySelector(`.label[data-idx="${idx}"] .label-content`).textContent = txt;
+      const isFilled = txt.length > 0 ? "1" : "0";
+      document.querySelector(`.label[data-idx="${idx}"]`).setAttribute('filled', isFilled);
     }
+
     function resetEtichette() {
-      for(let idx=0; idx<12; ++idx) {
-        etichette[idx] = {atto:"",nota:"",cd:""};
+      for(let idx = 0; idx < 12; ++idx) {
+        etichette[idx] = {atto:"", nota:"", cd:""};
         aggiornaEtichetta(idx);
       }
     }
-    document.querySelectorAll('.label').forEach(function(lab, idx){
-      lab.addEventListener("click", function(e){
+
+    function salvaDati() {
+        if (currentIdx === null) return;
+        etichette[currentIdx] = {
+            atto: inputAtto.value.trim(),
+            nota: inputNota.value.trim(),
+            cd: inputCd.value.trim()
+        };
+        aggiornaEtichetta(currentIdx);
+        overlay.style.display = 'none';
+        currentIdx = null;
+    }
+
+    document.querySelectorAll('.label').forEach((lab, idx) => {
+      lab.addEventListener("click", () => {
         currentIdx = idx;
-        inputAtto.value = etichette[idx].atto || '';
-        inputNota.value = etichette[idx].nota || '';
-        inputCd.value = etichette[idx].cd || ('Viterbo, ' + getDataOggi());
+        const { atto, nota, cd } = etichette[idx];
+        inputAtto.value = atto || '';
+        inputNota.value = nota || '';
+        inputCd.value = cd || `Viterbo, ${getDataOggi()}`;
         overlay.style.display = "flex";
-        setTimeout(()=>inputAtto.focus(),150);
+        setTimeout(() => inputAtto.focus(), 150);
       });
     });
-    btnAnnulla.addEventListener("click", function(){
-      overlay.style.display = "none";
-    });
-    btnCancellaCella.addEventListener("click",function(){
-      if(currentIdx===null) return;
-      showConfirm('Vuoi cancellare la cella selezionata?', function(ok){
-        if(ok){
-          etichette[currentIdx] = {atto:"",nota:"",cd:""};
+
+    btnAnnulla.addEventListener("click", () => { overlay.style.display = "none"; });
+
+    btnCancellaCella.addEventListener("click", () => {
+      if(currentIdx === null) return;
+      showConfirm('Vuoi cancellare il contenuto di questa cella?', ok => {
+        if(ok) {
+          etichette[currentIdx] = {atto:"", nota:"", cd:""};
           aggiornaEtichetta(currentIdx);
           overlay.style.display = "none";
           currentIdx = null;
-        } else {
-          setTimeout(() => btnAnnulla.focus(),100); // Resta sul pulsante Annulla
         }
       });
     });
-    modal.addEventListener("submit", function(e){
-      e.preventDefault();
-      if(currentIdx === null) return;
-      etichette[currentIdx] = {
-        atto: inputAtto.value.trim(),
-        nota: inputNota.value.trim(),
-        cd: inputCd.value.trim()
-      };
-      aggiornaEtichetta(currentIdx);
-      overlay.style.display = "none";
-      currentIdx = null;
+
+    modal.addEventListener("submit", e => {
+        e.preventDefault();
+        const campiVuoti = [];
+        if (!inputAtto.value.trim()) campiVuoti.push("Numero atto");
+        if (!inputNota.value.trim()) campiVuoti.push("Annotazione");
+        if (!inputCd.value.trim()) campiVuoti.push("Città/Data");
+
+        if (campiVuoti.length > 0) {
+            const msg = `I seguenti campi sono vuoti:\n${campiVuoti.join(', ')}.\n\nProcedere comunque?`;
+            showConfirm(msg, ok => {
+                if (ok) salvaDati();
+            });
+        } else {
+            salvaDati();
+        }
     });
-    window.addEventListener("keydown", function(e){
-      if(e.key==="Escape" && overlay.style.display==="flex")
+
+    window.addEventListener("keydown", e => {
+      if(e.key === "Escape" && overlay.style.display === "flex") {
         overlay.style.display = "none";
+      }
     });
-    btnReset.addEventListener("click", function(){
-      showConfirm('Vuoi cancellare il contenuto di tutte le etichette?', function(ok){
+
+    btnReset.addEventListener("click", () => {
+      showConfirm('Sei sicuro di voler cancellare tutte le etichette?', ok => {
         if(ok) resetEtichette();
-        else setTimeout(()=>btnPrint.focus(),100);
       });
     });
-    btnPrint.addEventListener("click", function(){
-      window.print();
-    });
-    window.onafterprint = function() {
-      setTimeout(function() {
-        showConfirm('Vuoi cancellare il contenuto di tutte le etichette?', function(ok){
-          if(ok) resetEtichette();
-          else setTimeout(()=>btnPrint.focus(),100);
-        });
-      },300);
-    };
-    // Inizializzazione
-    resetEtichette();
+
+    btnPrint.addEventListener("click", () => window.print());
+
+
+    resetEtichette(); // Inizializza al caricamento
   </script>
 </body>
-
 </html>
