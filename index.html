@@ -315,7 +315,7 @@
         const { atto, nota, cd } = etichette[idx];
         inputAtto.value = atto || '';
         inputNota.value = nota || '';
-        inputCd.value = cd || `Viterbo, ${getDataOggi()}`;
+        inputCd.value = cd || `Viterbo, ${getDataOggi()}                  USC`;
         overlay.style.display = "flex";
         setTimeout(() => inputAtto.focus(), 150);
       });
@@ -362,3 +362,4 @@
   </script>
 </body>
 </html>
+
