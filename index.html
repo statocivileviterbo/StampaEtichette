@@ -4,8 +4,9 @@
   <meta charset="UTF-8">
   <title>Etichette A4 - Codici Integri</title>
   <style>
-    @page { size: A4; margin: 5mm; }
+    @page { size: A4; margin: 5mm 0 5mm 0; }
     html, body { height: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; background: #fff; }
+
     #sheet {
       width: 210mm;
       height: 287mm;
@@ -20,6 +21,10 @@
       box-sizing: border-box;
       font-family: Arial, sans-serif;
       font-size: 10pt;
+      padding-top: 2mm;
+      padding-right: 8mm;
+      padding-bottom: 2mm;
+      padding-left: 5mm;
       background: none;
       cursor: pointer;
       display: flex;
@@ -31,35 +36,6 @@
       overflow-wrap: break-word;
       word-break: normal;
       white-space: pre-wrap;
-      transition: all 0.2s ease;
-    }
-    .label[filled="1"] {
-      cursor: grab;
-    }
-    .label[filled="1"]:active {
-      cursor: grabbing;
-    }
-    .label.dragging {
-      opacity: 0.5;
-      transform: scale(0.95);
-      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    }
-    .label.drag-over {
-      background: #fff3cd !important;
-      border: 2px dashed #ffc107;
-      transform: scale(1.02);
-    }
-    .label-left {
-      padding-top: 2mm;
-      padding-right: 2mm;
-      padding-bottom: 2mm;
-      padding-left: 8mm;
-    }
-    .label-right {
-      padding-top: 2mm;
-      padding-right: 8mm;
-      padding-bottom: 2mm;
-      padding-left: 2mm;
     }
     .label:hover { background: #e8f0fa; }
     .label-content {
@@ -97,6 +73,7 @@
       opacity: 0 !important;
       pointer-events: none !important;
     }
+    
     /* Classe per impedire line-break sui codici numerici */
     .nowrap {
       white-space: nowrap;
@@ -104,6 +81,7 @@
       overflow-wrap: normal;
       hyphens: none;
     }
+
     #actions-bar {
       display: flex;
       gap: 16px;
@@ -124,6 +102,7 @@
       transition: background 0.2s;
     }
     .action-btn:hover { background: #145283; }
+
     /* MODAL/overlay form */
     #overlay {
       display: none;
@@ -180,6 +159,7 @@
       margin-right: auto;
     }
     #cancella-cella:hover { background: #a10; }
+
     /* MODALE DI CONFERMA custom */
     #confirm-overlay {
       display:none; position:fixed; top:0; left:0;right:0;bottom:0; background:rgba(0,0,0,0.2); z-index:200;
@@ -198,6 +178,7 @@
     .cf-ok:hover {background:#15548c;}
     .cf-cancel { background:#bbb;color:#333;}
     .cf-cancel:hover {background:#888;}
+
     @media print {
       #actions-bar, #overlay, .watermark, #confirm-overlay { display: none !important; }
       body, html { background: #fff !important; }
@@ -214,19 +195,19 @@
     <button id="reset-btn" class="action-btn" style="background:#e44;">Cancella tutto</button>
   </div>
   <div id="sheet">
-    <!-- 12 etichette con classi differenziate per colonna -->
-    <div class="label label-left" data-idx="0" filled="0"><div class="label-content"></div><div class="watermark">1</div></div>
-    <div class="label label-right" data-idx="1" filled="0"><div class="label-content"></div><div class="watermark">2</div></div>
-    <div class="label label-left" data-idx="2" filled="0"><div class="label-content"></div><div class="watermark">3</div></div>
-    <div class="label label-right" data-idx="3" filled="0"><div class="label-content"></div><div class="watermark">4</div></div>
-    <div class="label label-left" data-idx="4" filled="0"><div class="label-content"></div><div class="watermark">5</div></div>
-    <div class="label label-right" data-idx="5" filled="0"><div class="label-content"></div><div class="watermark">6</div></div>
-    <div class="label label-left" data-idx="6" filled="0"><div class="label-content"></div><div class="watermark">7</div></div>
-    <div class="label label-right" data-idx="7" filled="0"><div class="label-content"></div><div class="watermark">8</div></div>
-    <div class="label label-left" data-idx="8" filled="0"><div class="label-content"></div><div class="watermark">9</div></div>
-    <div class="label label-right" data-idx="9" filled="0"><div class="label-content"></div><div class="watermark">10</div></div>
-    <div class="label label-left" data-idx="10" filled="0"><div class="label-content"></div><div class="watermark">11</div></div>
-    <div class="label label-right" data-idx="11" filled="0"><div class="label-content"></div><div class="watermark">12</div></div>
+    <!-- 12 etichette con filigrana numerica -->
+    <div class="label" data-idx="0" filled="0"><div class="label-content"></div><div class="watermark">1</div></div>
+    <div class="label" data-idx="1" filled="0"><div class="label-content"></div><div class="watermark">2</div></div>
+    <div class="label" data-idx="2" filled="0"><div class="label-content"></div><div class="watermark">3</div></div>
+    <div class="label" data-idx="3" filled="0"><div class="label-content"></div><div class="watermark">4</div></div>
+    <div class="label" data-idx="4" filled="0"><div class="label-content"></div><div class="watermark">5</div></div>
+    <div class="label" data-idx="5" filled="0"><div class="label-content"></div><div class="watermark">6</div></div>
+    <div class="label" data-idx="6" filled="0"><div class="label-content"></div><div class="watermark">7</div></div>
+    <div class="label" data-idx="7" filled="0"><div class="label-content"></div><div class="watermark">8</div></div>
+    <div class="label" data-idx="8" filled="0"><div class="label-content"></div><div class="watermark">9</div></div>
+    <div class="label" data-idx="9" filled="0"><div class="label-content"></div><div class="watermark">10</div></div>
+    <div class="label" data-idx="10" filled="0"><div class="label-content"></div><div class="watermark">11</div></div>
+    <div class="label" data-idx="11" filled="0"><div class="label-content"></div><div class="watermark">12</div></div>
   </div>
   <!-- Overlay/Modal inserimento e modifica -->
   <div id="overlay">
@@ -266,17 +247,19 @@
       const m = document.getElementById('confirm-msg');
       const bCancel = document.getElementById('cf-cancel');
       const bOk = document.getElementById('cf-ok');
-      m.innerText = msg;
+      m.textContent = msg;
       overlay.style.display = 'flex';
       setTimeout(() => bCancel.focus(), 150);
       bCancel.onclick = () => { overlay.style.display = 'none'; cb(false); };
       bOk.onclick = () => { overlay.style.display = 'none'; cb(true); };
       overlay.onkeydown = e => { if(e.key === "Escape") { overlay.style.display = 'none'; cb(false); }};
     }
+
     function getDataOggi() {
       let d = new Date();
       return ("0"+d.getDate()).slice(-2)+'/'+("0"+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();
     }
+
     // Funzione per avvolgere i codici numerici con trattini in span non-breakable
     function wrapCodici(input) {
       if (!input) return "";
@@ -285,100 +268,10 @@
         return '<span class="nowrap">' + codice + '</span>';
       });
     }
-    let draggedElement = null;
-    function setupDragAndDrop() {
-      document.querySelectorAll('.label').forEach(label => {
-        // Drag start
-        label.addEventListener('dragstart', function(e) {
-          const isFilled = this.getAttribute('filled') === '1';
-          if (!isFilled) {
-            e.preventDefault();
-            return;
-          }
-          draggedElement = this;
-          this.classList.add('dragging');
-          e.dataTransfer.effectAllowed = 'move';
-          e.dataTransfer.setData('text/html', this.outerHTML);
-        });
-        // Drag over
-        label.addEventListener('dragover', function(e) {
-          if (draggedElement && draggedElement !== this) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-          }
-        });
-        // Drag enter
-        label.addEventListener('dragenter', function(e) {
-          if (draggedElement && draggedElement !== this) {
-            e.preventDefault();
-            this.classList.add('drag-over');
-          }
-        });
-        // Drag leave
-        label.addEventListener('dragleave', function(e) {
-          if (!this.contains(e.relatedTarget)) {
-            this.classList.remove('drag-over');
-          }
-        });
-        // Drop
-        label.addEventListener('drop', function(e) {
-          e.preventDefault();
-          this.classList.remove('drag-over');
-          if (draggedElement && draggedElement !== this) {
-            const fromIdx = parseInt(draggedElement.dataset.idx);
-            const toIdx = parseInt(this.dataset.idx);
-            const targetData = etichette[toIdx];
-            const targetHasData = targetData.atto || targetData.nota || targetData.cd;
-            if (targetHasData) {
-              const maxLengthNota = 50; // Puoi cambiare questo numero
-              const notaTroncata = targetData.nota ? 
-             (targetData.nota.length > maxLengthNota ? 
-                targetData.nota.substring(0, maxLengthNota) + '…' : 
-                targetData.nota) : 
-              '(vuoto)';
 
-              const confirmMsg = `ATTENZIONE! La posizione ${toIdx + 1} contiene già dei dati:\n\n• Numero atto: ${targetData.atto || '(vuoto)'}\n• Annotazione: ${notaTroncata}\n• Città/Data: ${targetData.cd || '(vuoto)'}\n\nVuoi sovrascrivere questi dati?`;
-              showConfirm(confirmMsg, (confirmed) => {
-                if (confirmed) {
-                  eseguiSpostamentoDrag(fromIdx, toIdx);
-                }
-              });
-            } else {
-              eseguiSpostamentoDrag(fromIdx, toIdx);
-            }
-          }
-        });
-        // Drag end
-        label.addEventListener('dragend', function(e) {
-          this.classList.remove('dragging');
-          document.querySelectorAll('.label').forEach(l => l.classList.remove('drag-over'));
-          draggedElement = null;
-        });
-      });
-    }
-    function eseguiSpostamentoDrag(fromIdx, toIdx) {
-      // Copia i dati
-      etichette[toIdx] = {
-        atto: etichette[fromIdx].atto,
-        nota: etichette[fromIdx].nota,
-        cd: etichette[fromIdx].cd
-      };
-      // Cancella i dati dalla posizione originale
-      etichette[fromIdx] = { atto: "", nota: "", cd: "" };
-      // Aggiorna entrambe le etichette
-      aggiornaEtichetta(fromIdx);
-      aggiornaEtichetta(toIdx);
-      // Aggiorna attributi draggable
-      updateDraggableAttributes();
-    }
-    function updateDraggableAttributes() {
-      document.querySelectorAll('.label').forEach((label, idx) => {
-        const isFilled = etichette[idx].atto || etichette[idx].nota || etichette[idx].cd;
-        label.draggable = isFilled;
-      });
-    }
     const etichette = Array(12).fill().map(() => ({atto:"", nota:"", cd:""}));
     let currentIdx = null;
+
     const overlay = document.getElementById("overlay");
     const modal = document.getElementById("modal-form");
     const inputAtto = document.getElementById("num-atto");
@@ -388,6 +281,7 @@
     const btnCancellaCella = document.getElementById("cancella-cella");
     const btnPrint = document.getElementById("print-btn");
     const btnReset = document.getElementById("reset-btn");
+
     function aggiornaEtichetta(idx) {
       const { atto, nota, cd } = etichette[idx];
       // Applica il wrap ai codici solo nell'annotazione
@@ -401,13 +295,14 @@
       const isFilled = (atto || nota || cd) ? "1" : "0";
       document.querySelector(`.label[data-idx="${idx}"]`).setAttribute('filled', isFilled);
     }
+
     function resetEtichette() {
       for(let idx = 0; idx < 12; ++idx) {
         etichette[idx] = {atto:"", nota:"", cd:""};
         aggiornaEtichetta(idx);
       }
-      updateDraggableAttributes();
     }
+
     function salvaDati() {
         if (currentIdx === null) return;
         etichette[currentIdx] = {
@@ -416,42 +311,45 @@
             cd: inputCd.value.trim()
         };
         aggiornaEtichetta(currentIdx);
-        updateDraggableAttributes();
         overlay.style.display = 'none';
         currentIdx = null;
     }
+
     document.querySelectorAll('.label').forEach((lab, idx) => {
       lab.addEventListener("click", () => {
         currentIdx = idx;
         const { atto, nota, cd } = etichette[idx];
         inputAtto.value = atto || '';
         inputNota.value = nota || '';
-        inputCd.value = cd || `Viterbo, ${getDataOggi()}                  USC`;
+        inputCd.value = cd || `Viterbo, ${getDataOggi()}`;
         overlay.style.display = "flex";
         setTimeout(() => inputAtto.focus(), 150);
       });
     });
+
     btnAnnulla.addEventListener("click", () => { overlay.style.display = "none"; });
+
     btnCancellaCella.addEventListener("click", () => {
       if(currentIdx === null) return;
       showConfirm('Vuoi cancellare il contenuto di questa cella?', ok => {
         if(ok) {
           etichette[currentIdx] = {atto:"", nota:"", cd:""};
           aggiornaEtichetta(currentIdx);
-          updateDraggableAttributes();
           overlay.style.display = "none";
           currentIdx = null;
         }
       });
     });
+
     modal.addEventListener("submit", e => {
         e.preventDefault();
         const campiVuoti = [];
         if (!inputAtto.value.trim()) campiVuoti.push("Numero atto");
         if (!inputNota.value.trim()) campiVuoti.push("Annotazione");
         if (!inputCd.value.trim()) campiVuoti.push("Città/Data");
+
         if (campiVuoti.length > 0) {
-            const msg = `I seguenti campi sono vuoti:\n\n${campiVuoti.map(campo => `• ${campo}`).join('\n')}\n\nProcedere comunque?`;
+            const msg = `I seguenti campi sono vuoti:\n${campiVuoti.join(', ')}.\n\nProcedere comunque?`;
             showConfirm(msg, ok => {
                 if (ok) salvaDati();
             });
@@ -459,19 +357,22 @@
             salvaDati();
         }
     });
+
     window.addEventListener("keydown", e => {
       if(e.key === "Escape" && overlay.style.display === "flex") {
         overlay.style.display = "none";
       }
     });
+
     btnReset.addEventListener("click", () => {
       showConfirm('Sei sicuro di voler cancellare tutte le etichette?', ok => {
         if(ok) resetEtichette();
       });
     });
+
     btnPrint.addEventListener("click", () => window.print());
+
     resetEtichette(); // Inizializza al caricamento
-    setupDragAndDrop(); // Inizializza drag and drop
   </script>
 </body>
 </html>
