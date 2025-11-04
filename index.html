@@ -31,6 +31,23 @@
       overflow-wrap: break-word;
       word-break: normal;
       white-space: pre-wrap;
+      transition: all 0.2s ease;
+    }
+    .label[filled="1"] {
+      cursor: grab;
+    }
+    .label[filled="1"]:active {
+      cursor: grabbing;
+    }
+    .label.dragging {
+      opacity: 0.5;
+      transform: scale(0.95);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+    .label.drag-over {
+      background: #fff3cd !important;
+      border: 2px dashed #ffc107;
+      transform: scale(1.02);
     }
     .label-left {
       padding-top: 2mm;
@@ -249,7 +266,7 @@
       const m = document.getElementById('confirm-msg');
       const bCancel = document.getElementById('cf-cancel');
       const bOk = document.getElementById('cf-ok');
-      m.textContent = msg;
+      m.innerText = msg;
       overlay.style.display = 'flex';
       setTimeout(() => bCancel.focus(), 150);
       bCancel.onclick = () => { overlay.style.display = 'none'; cb(false); };
@@ -266,6 +283,98 @@
       // Trova sequenze di cifre separate da trattini (almeno 3 gruppi, min 2 cifre per gruppo)
       return input.replace(/\b(\d{2,}-)+\d{2,}\b/g, function(codice){
         return '<span class="nowrap">' + codice + '</span>';
+      });
+    }
+    let draggedElement = null;
+    function setupDragAndDrop() {
+      document.querySelectorAll('.label').forEach(label => {
+        // Drag start
+        label.addEventListener('dragstart', function(e) {
+          const isFilled = this.getAttribute('filled') === '1';
+          if (!isFilled) {
+            e.preventDefault();
+            return;
+          }
+          draggedElement = this;
+          this.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/html', this.outerHTML);
+        });
+        // Drag over
+        label.addEventListener('dragover', function(e) {
+          if (draggedElement && draggedElement !== this) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+          }
+        });
+        // Drag enter
+        label.addEventListener('dragenter', function(e) {
+          if (draggedElement && draggedElement !== this) {
+            e.preventDefault();
+            this.classList.add('drag-over');
+          }
+        });
+        // Drag leave
+        label.addEventListener('dragleave', function(e) {
+          if (!this.contains(e.relatedTarget)) {
+            this.classList.remove('drag-over');
+          }
+        });
+        // Drop
+        label.addEventListener('drop', function(e) {
+          e.preventDefault();
+          this.classList.remove('drag-over');
+          if (draggedElement && draggedElement !== this) {
+            const fromIdx = parseInt(draggedElement.dataset.idx);
+            const toIdx = parseInt(this.dataset.idx);
+            const targetData = etichette[toIdx];
+            const targetHasData = targetData.atto || targetData.nota || targetData.cd;
+            if (targetHasData) {
+              const maxLengthNota = 50; // Puoi cambiare questo numero
+              const notaTroncata = targetData.nota ? 
+             (targetData.nota.length > maxLengthNota ? 
+                targetData.nota.substring(0, maxLengthNota) + '…' : 
+                targetData.nota) : 
+              '(vuoto)';
+
+              const confirmMsg = `ATTENZIONE! La posizione ${toIdx + 1} contiene già dei dati:\n\n• Numero atto: ${targetData.atto || '(vuoto)'}\n• Annotazione: ${notaTroncata}\n• Città/Data: ${targetData.cd || '(vuoto)'}\n\nVuoi sovrascrivere questi dati?`;
+              showConfirm(confirmMsg, (confirmed) => {
+                if (confirmed) {
+                  eseguiSpostamentoDrag(fromIdx, toIdx);
+                }
+              });
+            } else {
+              eseguiSpostamentoDrag(fromIdx, toIdx);
+            }
+          }
+        });
+        // Drag end
+        label.addEventListener('dragend', function(e) {
+          this.classList.remove('dragging');
+          document.querySelectorAll('.label').forEach(l => l.classList.remove('drag-over'));
+          draggedElement = null;
+        });
+      });
+    }
+    function eseguiSpostamentoDrag(fromIdx, toIdx) {
+      // Copia i dati
+      etichette[toIdx] = {
+        atto: etichette[fromIdx].atto,
+        nota: etichette[fromIdx].nota,
+        cd: etichette[fromIdx].cd
+      };
+      // Cancella i dati dalla posizione originale
+      etichette[fromIdx] = { atto: "", nota: "", cd: "" };
+      // Aggiorna entrambe le etichette
+      aggiornaEtichetta(fromIdx);
+      aggiornaEtichetta(toIdx);
+      // Aggiorna attributi draggable
+      updateDraggableAttributes();
+    }
+    function updateDraggableAttributes() {
+      document.querySelectorAll('.label').forEach((label, idx) => {
+        const isFilled = etichette[idx].atto || etichette[idx].nota || etichette[idx].cd;
+        label.draggable = isFilled;
       });
     }
     const etichette = Array(12).fill().map(() => ({atto:"", nota:"", cd:""}));
@@ -297,6 +406,7 @@
         etichette[idx] = {atto:"", nota:"", cd:""};
         aggiornaEtichetta(idx);
       }
+      updateDraggableAttributes();
     }
     function salvaDati() {
         if (currentIdx === null) return;
@@ -306,6 +416,7 @@
             cd: inputCd.value.trim()
         };
         aggiornaEtichetta(currentIdx);
+        updateDraggableAttributes();
         overlay.style.display = 'none';
         currentIdx = null;
     }
@@ -327,6 +438,7 @@
         if(ok) {
           etichette[currentIdx] = {atto:"", nota:"", cd:""};
           aggiornaEtichetta(currentIdx);
+          updateDraggableAttributes();
           overlay.style.display = "none";
           currentIdx = null;
         }
@@ -339,7 +451,7 @@
         if (!inputNota.value.trim()) campiVuoti.push("Annotazione");
         if (!inputCd.value.trim()) campiVuoti.push("Città/Data");
         if (campiVuoti.length > 0) {
-            const msg = `I seguenti campi sono vuoti:\n${campiVuoti.join(', ')}.\n\nProcedere comunque?`;
+            const msg = `I seguenti campi sono vuoti:\n\n${campiVuoti.map(campo => `• ${campo}`).join('\n')}\n\nProcedere comunque?`;
             showConfirm(msg, ok => {
                 if (ok) salvaDati();
             });
@@ -359,7 +471,7 @@
     });
     btnPrint.addEventListener("click", () => window.print());
     resetEtichette(); // Inizializza al caricamento
+    setupDragAndDrop(); // Inizializza drag and drop
   </script>
 </body>
 </html>
-
