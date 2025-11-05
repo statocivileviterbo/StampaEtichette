@@ -4,42 +4,139 @@
   <meta charset="UTF-8">
   <title>Etichette A4 - Codici Integri</title>
   <style>
-    @page { size: A4; margin: 5mm 0 5mm 0; }
-    html, body { height: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; background: #fff; }
-
+    @page { 
+      size: A4; 
+      margin: 0; /* Gestisco i margini manualmente nel CSS */
+    }
+    
+    html, body { 
+      height: 100%; 
+      margin: 0; 
+      padding: 0; 
+      font-family: Arial, sans-serif; 
+      background: #f0f0f0; 
+    }
+    
+    /* Contenitore principale del foglio A4 con margini */
     #sheet {
       width: 210mm;
-      height: 287mm;
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      grid-template-rows: repeat(6, 1fr);
+      height: 297mm;
       margin: 0 auto;
       background: #fff;
       box-sizing: border-box;
+      /* Margini del foglio: 15mm laterali, 5mm sopra/sotto */
+      padding: 5mm 15mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
+    
+    /* Griglia delle etichette nell'area stampabile */
+    #labels-grid {
+      width: 180mm; /* 210mm - 30mm di margini laterali */
+      height: 287mm; /* 297mm - 10mm di margini verticali */
+      display: grid;
+      grid-template-columns: 90mm 90mm; /* 2 colonne da 90mm */
+      grid-template-rows: repeat(6, 47.833mm); /* 6 righe da ~47.83mm (287/6) */
+      box-sizing: border-box;
+    }
+    
+    /* Classe per mostrare i bordi in modalità debug */
+    .debug-mode #sheet {
+      border: 3px solid red !important;
+      position: relative;
+    }
+    
+    /* Indicatori margini in debug mode */
+    .debug-mode #sheet::before {
+      content: "Margini: 15mm lat. | 5mm vert.";
+      position: absolute;
+      top: 1mm;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 9pt;
+      color: red;
+      background: rgba(255,255,255,0.95);
+      padding: 2px 5px;
+      z-index: 1000;
+      pointer-events: none;
+    }
+    
+    .debug-mode #labels-grid {
+      border: 2px solid orange !important;
+    }
+    
+    .debug-mode .label {
+      border: 1px solid blue !important;
+      position: relative;
+    }
+    
+    .debug-mode .label-content {
+      border: 1px dashed green !important;
+    }
+    
+    /* Indicatori dimensioni etichetta in debug mode */
+    .debug-mode .label::after {
+      content: "90×47.8mm";
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      font-size: 8pt;
+      color: blue;
+      background: rgba(255,255,255,0.9);
+      padding: 1px 3px;
+      z-index: 10;
+      pointer-events: none;
+    }
+    
     .label {
+      width: 90mm; /* Larghezza esatta dell'etichetta */
+      height: 47.833mm; /* Altezza esatta dell'etichetta */
       box-sizing: border-box;
       font-family: Arial, sans-serif;
       font-size: 10pt;
-      padding-top: 2mm;
-      padding-right: 8mm;
-      padding-bottom: 2mm;
-      padding-left: 5mm;
       background: none;
       cursor: pointer;
       display: flex;
       align-items: flex-start;
       justify-content: flex-start;
-      min-height: 0;
-      min-width: 0;
       position: relative;
-      overflow-wrap: break-word;
-      word-break: normal;
-      white-space: pre-wrap;
+      transition: all 0.2s ease;
+      overflow: hidden;
+      /* Padding uniforme di 2mm su tutti i lati per tutte le etichette */
+      padding: 2mm;
     }
-    .label:hover { background: #e8f0fa; }
+    
+    .label[filled="1"] {
+      cursor: grab;
+    }
+    
+    .label[filled="1"]:active {
+      cursor: grabbing;
+    }
+    
+    .label.dragging {
+      opacity: 0.5;
+      transform: scale(0.95);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+    
+    .label.drag-over {
+      background: #fff3cd !important;
+      border: 2px dashed #ffc107;
+      transform: scale(1.02);
+    }
+    
+    .label:hover { 
+      background: #e8f0fa; 
+    }
+    
     .label-content {
       width: 100%;
+      height: 100%;
+      /* Padding interno aggiuntivo di 2mm */
+      padding: 2mm;
+      box-sizing: border-box;
       white-space: pre-wrap;
       font-family: Arial, sans-serif;
       font-size: 10pt;
@@ -47,8 +144,16 @@
       pointer-events: none;
       z-index: 2;
       position: relative;
-      word-break: normal;
+      word-break: break-word;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: flex-start;
     }
+    
     .watermark {
       display: flex;
       align-items: center;
@@ -60,7 +165,7 @@
       height: 100%;
       pointer-events: none;
       font-family: Arial, sans-serif;
-      font-size: 62pt;
+      font-size: 56pt;
       font-weight: bold;
       color: #bcd;
       opacity: 0.37;
@@ -69,6 +174,7 @@
       user-select: none;
       transition: opacity 0.2s;
     }
+    
     .label[filled="1"] .watermark {
       opacity: 0 !important;
       pointer-events: none !important;
@@ -81,14 +187,16 @@
       overflow-wrap: normal;
       hyphens: none;
     }
-
+    
     #actions-bar {
       display: flex;
       gap: 16px;
       justify-content: center;
       margin: 20px auto 18px auto;
       align-items: center;
+      flex-wrap: wrap;
     }
+    
     .action-btn {
       padding: 12px 34px;
       font-size: 18px;
@@ -101,8 +209,25 @@
       font-weight: 600;
       transition: background 0.2s;
     }
-    .action-btn:hover { background: #145283; }
-
+    .action-btn:hover { 
+      background: #145283; 
+    }
+    
+    /* Stile specifico per il tasto debug */
+    #debug-btn {
+      background: #6c757d;
+	  display: none; /* ← decommenta questa riga per nascondere il pulsante */
+    }
+    #debug-btn:hover { 
+      background: #545b62; 
+    }
+    #debug-btn.active {
+      background: #28a745;
+    }
+    #debug-btn.active:hover {
+      background: #218838;
+    }
+    
     /* MODAL/overlay form */
     #overlay {
       display: none;
@@ -113,6 +238,7 @@
       align-items: center;
       justify-content: center;
     }
+    
     #modal-form {
       display: flex;
       flex-direction: column;
@@ -125,6 +251,7 @@
       max-width: 98vw;
       min-height: 380px;
     }
+    
     #modal-form input[type='text'],
     #modal-form textarea {
       font-family: Arial, sans-serif;
@@ -135,13 +262,31 @@
       padding: 8px 10px;
       font-size: 1.1em;
     }
+    
     #modal-form textarea {
       min-height: 190px;
       resize: vertical;
     }
-    #modal-form label { font-size: 1em; font-weight: bold; }
-    #modal-form .form-row { display: flex; flex-direction: column; gap: 5px; }
-    #modal-form .actions { display: flex; gap: 22px; margin-top: 16px; justify-content: flex-end; align-items: center;}
+    
+    #modal-form label { 
+      font-size: 1em; 
+      font-weight: bold; 
+    }
+    
+    #modal-form .form-row { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 5px; 
+    }
+    
+    #modal-form .actions { 
+      display: flex; 
+      gap: 22px; 
+      margin-top: 16px; 
+      justify-content: flex-end; 
+      align-items: center;
+    }
+    
     #modal-form button {
       padding: 10px 24px;
       font-size: 1.1em;
@@ -153,85 +298,177 @@
       font-weight: bold;
       transition: background .13s;
     }
-    #modal-form button:hover { background: #15548c; }
+    
+    #modal-form button:hover { 
+      background: #15548c; 
+    }
+    
     #cancella-cella {
       background: #e44;
       margin-right: auto;
     }
-    #cancella-cella:hover { background: #a10; }
-
+    
+    #cancella-cella:hover { 
+      background: #a10; 
+    }
+    
     /* MODALE DI CONFERMA custom */
     #confirm-overlay {
-      display:none; position:fixed; top:0; left:0;right:0;bottom:0; background:rgba(0,0,0,0.2); z-index:200;
-      align-items:center; justify-content:center;
+      display:none; 
+      position:fixed; 
+      top:0; left:0; right:0; bottom:0; 
+      background:rgba(0,0,0,0.2); 
+      z-index:200;
+      align-items:center; 
+      justify-content:center;
     }
+    
     #confirm-box {
-      background:#fff; border-radius:9px; padding:38px 45px; min-width:340px; max-width:93vw;
+      background:#fff; 
+      border-radius:9px; 
+      padding:38px 45px; 
+      min-width:340px; 
+      max-width:93vw;
       box-shadow:0 8px 38px rgba(0,0,0,0.19);
       font-family:Arial,sans-serif;
-      display:flex; flex-direction:column; gap:28px;
+      display:flex; 
+      flex-direction:column; 
+      gap:28px;
     }
-    #confirm-box .msg { font-size:1.18em; color:#222; line-height: 1.4; }
-    #confirm-box .cf-btns { display:flex; gap:16px; justify-content:flex-end;}
-    .cf-btn { padding:10px 27px; border:none; border-radius:3px; font-size:1.11em; font-weight:bold; cursor:pointer; }
-    .cf-ok { background:#1d72b8;color:#fff;}
-    .cf-ok:hover {background:#15548c;}
-    .cf-cancel { background:#bbb;color:#333;}
-    .cf-cancel:hover {background:#888;}
-
+    
+    #confirm-box .msg { 
+      font-size:1.18em; 
+      color:#222; 
+      line-height: 1.4; 
+    }
+    
+    #confirm-box .cf-btns { 
+      display:flex; 
+      gap:16px; 
+      justify-content:flex-end;
+    }
+    
+    .cf-btn { 
+      padding:10px 27px; 
+      border:none; 
+      border-radius:3px; 
+      font-size:1.11em; 
+      font-weight:bold; 
+      cursor:pointer; 
+    }
+    
+    .cf-ok { 
+      background:#1d72b8;
+      color:#fff;
+    }
+    
+    .cf-ok:hover {
+      background:#15548c;
+    }
+    
+    .cf-cancel { 
+      background:#bbb;
+      color:#333;
+    }
+    
+    .cf-cancel:hover {
+      background:#888;
+    }
+    
     @media print {
-      #actions-bar, #overlay, .watermark, #confirm-overlay { display: none !important; }
-      body, html { background: #fff !important; }
-      #sheet { display: grid !important; }
-      .label { background: none !important; box-shadow: none !important; cursor: default !important; }
-      .label:hover { background: none !important; }
+      #actions-bar, #overlay, .watermark, #confirm-overlay { 
+        display: none !important; 
+      }
+      body, html { 
+        background: #fff !important; 
+      }
+      #sheet { 
+        display: flex !important; 
+      }
+      #labels-grid {
+        display: grid !important;
+      }
+      .label { 
+        background: none !important; 
+        box-shadow: none !important; 
+        cursor: default !important; 
+        /* IMPORTANTE: Nascondi i bordi in stampa anche se in modalità debug */
+        border: none !important;
+      }
+      .label-content {
+        border: none !important;
+      }
+      .label:hover { 
+        background: none !important; 
+      }
+      /* Rimuovi la classe debug in stampa */
+      .debug-mode #sheet {
+        border: none !important;
+      }
+      .debug-mode #sheet::before,
+      .debug-mode #sheet::after {
+        display: none !important;
+      }
+      .debug-mode #labels-grid {
+        border: none !important;
+      }
+      /* Nasconde gli indicatori di dimensione in stampa */
+      .label::after {
+        display: none !important;
+      }
     }
   </style>
 </head>
 <body>
-  <!-- Barra azioni per stampa/resetta -->
+  <!-- Barra azioni per stampa/resetta/debug -->
   <div id="actions-bar">
     <button id="print-btn" class="action-btn">Stampa PDF</button>
     <button id="reset-btn" class="action-btn" style="background:#e44;">Cancella tutto</button>
+    <button id="debug-btn" class="action-btn">Debug Bordi (OFF)</button>
   </div>
+  
   <div id="sheet">
-    <!-- 12 etichette con filigrana numerica -->
-    <div class="label" data-idx="0" filled="0"><div class="label-content"></div><div class="watermark">1</div></div>
-    <div class="label" data-idx="1" filled="0"><div class="label-content"></div><div class="watermark">2</div></div>
-    <div class="label" data-idx="2" filled="0"><div class="label-content"></div><div class="watermark">3</div></div>
-    <div class="label" data-idx="3" filled="0"><div class="label-content"></div><div class="watermark">4</div></div>
-    <div class="label" data-idx="4" filled="0"><div class="label-content"></div><div class="watermark">5</div></div>
-    <div class="label" data-idx="5" filled="0"><div class="label-content"></div><div class="watermark">6</div></div>
-    <div class="label" data-idx="6" filled="0"><div class="label-content"></div><div class="watermark">7</div></div>
-    <div class="label" data-idx="7" filled="0"><div class="label-content"></div><div class="watermark">8</div></div>
-    <div class="label" data-idx="8" filled="0"><div class="label-content"></div><div class="watermark">9</div></div>
-    <div class="label" data-idx="9" filled="0"><div class="label-content"></div><div class="watermark">10</div></div>
-    <div class="label" data-idx="10" filled="0"><div class="label-content"></div><div class="watermark">11</div></div>
-    <div class="label" data-idx="11" filled="0"><div class="label-content"></div><div class="watermark">12</div></div>
+    <div id="labels-grid">
+      <!-- 12 etichette -->
+      <div class="label" data-idx="0" filled="0"><div class="label-content"></div><div class="watermark">1</div></div>
+      <div class="label" data-idx="1" filled="0"><div class="label-content"></div><div class="watermark">2</div></div>
+      <div class="label" data-idx="2" filled="0"><div class="label-content"></div><div class="watermark">3</div></div>
+      <div class="label" data-idx="3" filled="0"><div class="label-content"></div><div class="watermark">4</div></div>
+      <div class="label" data-idx="4" filled="0"><div class="label-content"></div><div class="watermark">5</div></div>
+      <div class="label" data-idx="5" filled="0"><div class="label-content"></div><div class="watermark">6</div></div>
+      <div class="label" data-idx="6" filled="0"><div class="label-content"></div><div class="watermark">7</div></div>
+      <div class="label" data-idx="7" filled="0"><div class="label-content"></div><div class="watermark">8</div></div>
+      <div class="label" data-idx="8" filled="0"><div class="label-content"></div><div class="watermark">9</div></div>
+      <div class="label" data-idx="9" filled="0"><div class="label-content"></div><div class="watermark">10</div></div>
+      <div class="label" data-idx="10" filled="0"><div class="label-content"></div><div class="watermark">11</div></div>
+      <div class="label" data-idx="11" filled="0"><div class="label-content"></div><div class="watermark">12</div></div>
+    </div>
   </div>
-  <!-- Overlay/Modal inserimento e modifica -->
+  
+  <!-- Modal for editing labels -->
   <div id="overlay">
-    <form id="modal-form" autocomplete="off">
+    <form id="modal-form">
       <div class="form-row">
-        <label for="num-atto">Numero atto:</label>
-        <input type="text" id="num-atto" maxlength="30">
+        <label for="num-atto">Numero Atto</label>
+        <input type="text" id="num-atto" placeholder="Inserisci numero atto..." />
       </div>
       <div class="form-row">
-        <label for="annotazione">Annotazione:</label>
-        <textarea id="annotazione" maxlength="800"></textarea>
+        <label for="annotazione">Annotazione</label>
+        <textarea id="annotazione" placeholder="Inserisci annotazione..."></textarea>
       </div>
       <div class="form-row">
-        <label for="city-date">Città/Data:</label>
-        <input type="text" id="city-date" maxlength="40">
+        <label for="city-date">Città e Data</label>
+        <input type="text" id="city-date" placeholder="es. Viterbo, 01/01/2024" />
       </div>
       <div class="actions">
         <button type="button" id="cancella-cella">Cancella cella</button>
         <button type="button" id="annulla">Annulla</button>
-        <button type="submit">OK</button>
+        <button type="submit">Salva</button>
       </div>
     </form>
   </div>
-  <!-- Overlay per modale conferma custom -->
+  
+  <!-- MODALE di conferma custom -->
   <div id="confirm-overlay">
     <div id="confirm-box">
       <div class="msg" id="confirm-msg"></div>
@@ -241,25 +478,29 @@
       </div>
     </div>
   </div>
+  
   <script>
+    // Variabile per tracciare lo stato del debug
+    let debugMode = false;
+    
     function showConfirm(msg, cb) {
       const overlay = document.getElementById('confirm-overlay');
       const m = document.getElementById('confirm-msg');
       const bCancel = document.getElementById('cf-cancel');
       const bOk = document.getElementById('cf-ok');
-      m.textContent = msg;
+      m.innerText = msg;
       overlay.style.display = 'flex';
       setTimeout(() => bCancel.focus(), 150);
       bCancel.onclick = () => { overlay.style.display = 'none'; cb(false); };
       bOk.onclick = () => { overlay.style.display = 'none'; cb(true); };
       overlay.onkeydown = e => { if(e.key === "Escape") { overlay.style.display = 'none'; cb(false); }};
     }
-
+    
     function getDataOggi() {
       let d = new Date();
       return ("0"+d.getDate()).slice(-2)+'/'+("0"+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();
     }
-
+    
     // Funzione per avvolgere i codici numerici con trattini in span non-breakable
     function wrapCodici(input) {
       if (!input) return "";
@@ -268,10 +509,127 @@
         return '<span class="nowrap">' + codice + '</span>';
       });
     }
+    
+    // Funzione per gestire il toggle del debug
+    function toggleDebug() {
+      debugMode = !debugMode;
+      const btnDebug = document.getElementById('debug-btn');
+      const body = document.body;
+      
+      if (debugMode) {
+        body.classList.add('debug-mode');
+        btnDebug.textContent = 'Debug Bordi (ON)';
+        btnDebug.classList.add('active');
+      } else {
+        body.classList.remove('debug-mode');
+        btnDebug.textContent = 'Debug Bordi (OFF)';
+        btnDebug.classList.remove('active');
+      }
+    }
+    
+    let draggedElement = null;
+    
+    function setupDragAndDrop() {
+      document.querySelectorAll('.label').forEach(label => {
+        // Drag start
+        label.addEventListener('dragstart', function(e) {
+          const isFilled = this.getAttribute('filled') === '1';
+          if (!isFilled) {
+            e.preventDefault();
+            return;
+          }
+          draggedElement = this;
+          this.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/html', this.outerHTML);
+        });
+        
+        // Drag over
+        label.addEventListener('dragover', function(e) {
+          if (draggedElement && draggedElement !== this) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+          }
+        });
+        
+        // Drag enter
+        label.addEventListener('dragenter', function(e) {
+          if (draggedElement && draggedElement !== this) {
+            e.preventDefault();
+            this.classList.add('drag-over');
+          }
+        });
+        
+        // Drag leave
+        label.addEventListener('dragleave', function(e) {
+          if (!this.contains(e.relatedTarget)) {
+            this.classList.remove('drag-over');
+          }
+        });
+        
+        // Drop
+        label.addEventListener('drop', function(e) {
+          e.preventDefault();
+          this.classList.remove('drag-over');
+          if (draggedElement && draggedElement !== this) {
+            const fromIdx = parseInt(draggedElement.dataset.idx);
+            const toIdx = parseInt(this.dataset.idx);
+            const targetData = etichette[toIdx];
+            const targetHasData = targetData.atto || targetData.nota || targetData.cd;
+            if (targetHasData) {
+              const maxLengthNota = 50;
+              const notaTroncata = targetData.nota ? 
+                (targetData.nota.length > maxLengthNota ? 
+                  targetData.nota.substring(0, maxLengthNota) + '…' : 
+                  targetData.nota) : 
+                '(vuoto)';
 
+              const confirmMsg = `ATTENZIONE! La posizione ${toIdx + 1} contiene già dei dati:\n\n• Numero atto: ${targetData.atto || '(vuoto)'}\n• Annotazione: ${notaTroncata}\n• Città/Data: ${targetData.cd || '(vuoto)'}\n\nVuoi sovrascrivere questi dati?`;
+              showConfirm(confirmMsg, (confirmed) => {
+                if (confirmed) {
+                  eseguiSpostamentoDrag(fromIdx, toIdx);
+                }
+              });
+            } else {
+              eseguiSpostamentoDrag(fromIdx, toIdx);
+            }
+          }
+        });
+        
+        // Drag end
+        label.addEventListener('dragend', function(e) {
+          this.classList.remove('dragging');
+          document.querySelectorAll('.label').forEach(l => l.classList.remove('drag-over'));
+          draggedElement = null;
+        });
+      });
+    }
+    
+    function eseguiSpostamentoDrag(fromIdx, toIdx) {
+      // Copia i dati
+      etichette[toIdx] = {
+        atto: etichette[fromIdx].atto,
+        nota: etichette[fromIdx].nota,
+        cd: etichette[fromIdx].cd
+      };
+      // Cancella i dati dalla posizione originale
+      etichette[fromIdx] = { atto: "", nota: "", cd: "" };
+      // Aggiorna entrambe le etichette
+      aggiornaEtichetta(fromIdx);
+      aggiornaEtichetta(toIdx);
+      // Aggiorna attributi draggable
+      updateDraggableAttributes();
+    }
+    
+    function updateDraggableAttributes() {
+      document.querySelectorAll('.label').forEach((label, idx) => {
+        const isFilled = etichette[idx].atto || etichette[idx].nota || etichette[idx].cd;
+        label.draggable = isFilled;
+      });
+    }
+    
     const etichette = Array(12).fill().map(() => ({atto:"", nota:"", cd:""}));
     let currentIdx = null;
-
     const overlay = document.getElementById("overlay");
     const modal = document.getElementById("modal-form");
     const inputAtto = document.getElementById("num-atto");
@@ -281,7 +639,8 @@
     const btnCancellaCella = document.getElementById("cancella-cella");
     const btnPrint = document.getElementById("print-btn");
     const btnReset = document.getElementById("reset-btn");
-
+    const btnDebug = document.getElementById("debug-btn");
+    
     function aggiornaEtichetta(idx) {
       const { atto, nota, cd } = etichette[idx];
       // Applica il wrap ai codici solo nell'annotazione
@@ -295,84 +654,92 @@
       const isFilled = (atto || nota || cd) ? "1" : "0";
       document.querySelector(`.label[data-idx="${idx}"]`).setAttribute('filled', isFilled);
     }
-
+    
     function resetEtichette() {
       for(let idx = 0; idx < 12; ++idx) {
         etichette[idx] = {atto:"", nota:"", cd:""};
         aggiornaEtichetta(idx);
       }
+      updateDraggableAttributes();
     }
-
+    
     function salvaDati() {
-        if (currentIdx === null) return;
-        etichette[currentIdx] = {
-            atto: inputAtto.value.trim(),
-            nota: inputNota.value.trim(),
-            cd: inputCd.value.trim()
-        };
-        aggiornaEtichetta(currentIdx);
-        overlay.style.display = 'none';
-        currentIdx = null;
+      if (currentIdx === null) return;
+      etichette[currentIdx] = {
+        atto: inputAtto.value.trim(),
+        nota: inputNota.value.trim(),
+        cd: inputCd.value.trim()
+      };
+      aggiornaEtichetta(currentIdx);
+      updateDraggableAttributes();
+      overlay.style.display = 'none';
+      currentIdx = null;
     }
-
+    
     document.querySelectorAll('.label').forEach((lab, idx) => {
       lab.addEventListener("click", () => {
         currentIdx = idx;
         const { atto, nota, cd } = etichette[idx];
         inputAtto.value = atto || '';
         inputNota.value = nota || '';
-        inputCd.value = cd || `Viterbo, ${getDataOggi()}`;
+        inputCd.value = cd || `Viterbo, ${getDataOggi()}                  USC`;
         overlay.style.display = "flex";
         setTimeout(() => inputAtto.focus(), 150);
       });
     });
-
-    btnAnnulla.addEventListener("click", () => { overlay.style.display = "none"; });
-
+    
+    btnAnnulla.addEventListener("click", () => { 
+      overlay.style.display = "none"; 
+    });
+    
     btnCancellaCella.addEventListener("click", () => {
       if(currentIdx === null) return;
       showConfirm('Vuoi cancellare il contenuto di questa cella?', ok => {
         if(ok) {
           etichette[currentIdx] = {atto:"", nota:"", cd:""};
           aggiornaEtichetta(currentIdx);
+          updateDraggableAttributes();
           overlay.style.display = "none";
           currentIdx = null;
         }
       });
     });
-
+    
     modal.addEventListener("submit", e => {
-        e.preventDefault();
-        const campiVuoti = [];
-        if (!inputAtto.value.trim()) campiVuoti.push("Numero atto");
-        if (!inputNota.value.trim()) campiVuoti.push("Annotazione");
-        if (!inputCd.value.trim()) campiVuoti.push("Città/Data");
-
-        if (campiVuoti.length > 0) {
-            const msg = `I seguenti campi sono vuoti:\n${campiVuoti.join(', ')}.\n\nProcedere comunque?`;
-            showConfirm(msg, ok => {
-                if (ok) salvaDati();
-            });
-        } else {
-            salvaDati();
-        }
+      e.preventDefault();
+      const campiVuoti = [];
+      if (!inputAtto.value.trim()) campiVuoti.push("Numero atto");
+      if (!inputNota.value.trim()) campiVuoti.push("Annotazione");
+      if (!inputCd.value.trim()) campiVuoti.push("Città/Data");
+      if (campiVuoti.length > 0) {
+        const msg = `I seguenti campi sono vuoti:\n\n${campiVuoti.map(campo => `• ${campo}`).join('\n')}\n\nProcedere comunque?`;
+        showConfirm(msg, ok => {
+          if (ok) salvaDati();
+        });
+      } else {
+        salvaDati();
+      }
     });
-
+    
     window.addEventListener("keydown", e => {
       if(e.key === "Escape" && overlay.style.display === "flex") {
         overlay.style.display = "none";
       }
     });
-
+    
     btnReset.addEventListener("click", () => {
       showConfirm('Sei sicuro di voler cancellare tutte le etichette?', ok => {
         if(ok) resetEtichette();
       });
     });
-
+    
     btnPrint.addEventListener("click", () => window.print());
-
+    
+    // Event listener per il tasto debug
+    btnDebug.addEventListener("click", toggleDebug);
+    
     resetEtichette(); // Inizializza al caricamento
+    setupDragAndDrop(); // Inizializza drag and drop
   </script>
 </body>
 </html>
