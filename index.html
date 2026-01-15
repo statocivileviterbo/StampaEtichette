@@ -1,1310 +1,386 @@
-
 <!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Etichette A4 - Sistema Flessibile</title>
-  <style>
-    /* ============================================
-       PARAMETRI CONFIGURABILI  v16
-       ============================================ */
-    :root {
-      /* Formato foglio */
-      --page-width: 210mm;
-      --page-height: 297mm;
-      
-      /* Margini foglio (top, right, bottom, left) */
-      --margin-top: 5mm;
-      --margin-right: 8mm;
-      --margin-bottom: 5mm;
-      --margin-left: 8mm;
-      
-      /* Padding interno celle (uguale per tutti i lati) */
-      --cell-padding: 2mm;
-      
-      /* Numero etichette (colonne x righe) */
-      --grid-cols: 2;
-      --grid-rows: 6;
-      
-      /* Stile testo */
-      --font-family: Arial, sans-serif;
-      --font-size: 10pt;
-      --text-color: #111;
-      
-      /* Colori interfaccia */
-      --primary-color: #1d72b8;
-      --primary-hover: #145283;
-      --danger-color: #e44;
-      --danger-hover: #a10;
-      --watermark-color: #bcd;
-      
-      /* Calcoli automatici */
-      --work-width: calc(var(--page-width) - var(--margin-left) - var(--margin-right));
-      --work-height: calc(var(--page-height) - var(--margin-top) - var(--margin-bottom));
-    }
+  <title>Etichette A4 - Codici Integri</title>
+  <style>  /*version stable*/
+    @page { size: A4; margin: 5mm 8mm 5mm 8mm; }
+    html, body { height: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; background: #fff; }
 
-    /* ============================================
-       RESET E BASE
-       ============================================ */
-    * { box-sizing: border-box; }
-    html, body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      font-family: var(--font-family);
-      background: #f5f5f5;
-    }
-
-    /* ============================================
-       BARRA STRUMENTI FISSA
-       ============================================ */
-    #toolbar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 70px;
-      background: #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      z-index: 50;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 30px;
-    }
-    
-    .toolbar-left,
-    .toolbar-right {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }
-    
-    .tool-btn {
-      padding: 10px 20px;
-      font-size: 15px;
-      background: var(--primary-color);
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-family: var(--font-family);
-      font-weight: 600;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .tool-btn:hover {
-      background: var(--primary-hover);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(29, 114, 184, 0.3);
-    }
-    
-    .tool-btn.danger {
-      background: var(--danger-color);
-    }
-    
-    .tool-btn.danger:hover {
-      background: var(--danger-hover);
-      box-shadow: 0 4px 12px rgba(238, 68, 68, 0.3);
-    }
-    
-    .tool-btn.settings {
-      background: #6c757d;
-    }
-    
-    .tool-btn.settings:hover {
-      background: #5a6268;
-      box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
-    }
-
-    /* ============================================
-       FOGLIO E GRIGLIA ETICHETTE
-       ============================================ */
-    #sheet-container {
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      padding: 100px 20px 30px 20px;
-      min-height: calc(100vh - 70px);
-    }
-    
     #sheet {
-      width: var(--work-width);
-      height: var(--work-height);
+      width: 194mm; /* 210-(8mm * 2) */
+      height: 287mm; /* 297-(5mm * 2) */
       display: grid;
-      grid-template-columns: repeat(var(--grid-cols), 1fr);
-      grid-template-rows: repeat(var(--grid-rows), 1fr);
-      gap: 0;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(6, 1fr);
+      margin: 0 auto;
       background: #fff;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      box-sizing: border-box;
+      gap: 0;
+      padding: 0;
     }
-
-    /* ============================================
-       STRUTTURA ETICHETTA
-       ============================================ */
     .label {
-      position: relative;
-      padding: var(--cell-padding);
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+      font-size: 10pt;
+      padding-top: 2mm;
+      padding-right: 2mm;
+      padding-bottom: 2mm;
+      padding-left: 2mm;
+      background: none;
       cursor: pointer;
-      border: 1px solid #e0e0e0;
-      transition: all 0.2s;
       display: flex;
-      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
+      min-height: 0;
+      min-width: 0;
+      position: relative;
+      overflow-wrap: break-word;
+      word-break: normal;
+      white-space: pre-wrap;
     }
-    
-    .label:hover {
-      background: #e8f0fa;
-      border-color: var(--primary-color);
-      z-index: 1;
-    }
-    
-    .label[data-filled="true"] {
-      cursor: grab;
-    }
-    
-    .label[data-filled="true"]:active {
-      cursor: grabbing;
-    }
-    
-    .label.dragging {
-      opacity: 0.5;
-      border: 2px dashed var(--primary-color);
-    }
-    
-    .label.drag-over {
-      background: #fff3cd;
-      border: 2px solid #ffc107;
-      transform: scale(1.02);
-    }
-
-    /* Contenuto principale (annotazione + città/data) */
-	.label-main {
-	  flex: 1;
-	  font-family: var(--font-family);
-	  font-size: var(--font-size);
-	  color: var(--text-color);
-	  white-space: pre-wrap;
-	  word-wrap: break-word;
-	  word-break: normal;
-	  overflow-wrap: break-word;
-	  position: relative;
-	  z-index: 2;
-	  overflow: hidden;
-	}
-
-    /* Numero atto (angolo basso destra) */
-    .label-atto {
-      position: absolute;
-      bottom: var(--cell-padding);
-      right: var(--cell-padding);
-      font-family: var(--font-family);
-      font-size: var(--font-size);
-      font-style: italic;
-      color: var(--text-color);
-      background: transparent;
-      z-index: 3;
+    .label:hover { background: #e8f0fa; }
+    .label-content {
+      width: 100%;
+      white-space: pre-wrap;
+      font-family: Arial, sans-serif;
+      font-size: 10pt;
+      color: #111;
       pointer-events: none;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 80%;
+      z-index: 2;
+      position: relative;
+      word-break: normal;
     }
-
-    /* Filigrana numerica */
     .watermark {
-      position: absolute;
-      inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-family: var(--font-family);
+      position: absolute;
+      z-index: 1;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      font-family: Arial, sans-serif;
       font-size: 62pt;
       font-weight: bold;
-      color: var(--watermark-color);
+      color: #bcd;
       opacity: 0.37;
-      pointer-events: none;
+      text-align: center;
+      letter-spacing: 0.1em;
       user-select: none;
-      z-index: 1;
       transition: opacity 0.2s;
     }
-    
-    .label[data-filled="true"] .watermark {
-      opacity: 0;
+    .label[filled="1"] .watermark {
+      opacity: 0 !important;
+      pointer-events: none !important;
     }
-
-    /* Classe per codici non separabili */
+    
+    /* Classe per impedire line-break sui codici numerici */
     .nowrap {
-	  display: inline-block;
-	  white-space: nowrap;
+      white-space: nowrap;
+      word-break: keep-all;
+      overflow-wrap: normal;
+      hyphens: none;
     }
 
-    /* ============================================
-       MODAL IMPOSTAZIONI
-       ============================================ */
-    #settings-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      z-index: 100;
-      align-items: center;
+    #actions-bar {
+      display: flex;
+      gap: 16px;
       justify-content: center;
-      animation: fadeIn 0.2s;
-    }
-    
-    #settings-panel {
-      background: #fff;
-      border-radius: 8px;
-      padding: 30px;
-      min-width: 700px;
-      max-width: 90vw;
-      max-height: 90vh;
-      overflow-y: auto;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-      animation: slideIn 0.3s;
-    }
-    
-    #settings-panel h2 {
-      margin: 0 0 30px 0;
-      color: #333;
-      font-size: 24px;
-    }
-    
-    .setting-group {
-      margin-bottom: 30px;
-      padding: 20px;
-      background: #f8f9fa;
-      border-radius: 6px;
-    }
-    
-    .setting-group h3 {
-      margin: 0 0 20px 0;
-      color: #555;
-      font-size: 16px;
-    }
-    
-    .setting-visual {
-      display: flex;
+      margin: 20px auto 18px auto;
       align-items: center;
-      gap: 30px;
     }
-    
-    /* Visualizzazione griglia */
-    .grid-visual {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
-    
-    .grid-icon {
-      width: 80px;
-      height: 100px;
-      border: 3px solid #333;
-      background: #fff;
-      display: grid;
-      gap: 2px;
-      padding: 4px;
-    }
-    
-    .grid-icon.cols-2 { grid-template-columns: repeat(2, 1fr); }
-    .grid-icon.rows-6 { grid-template-rows: repeat(6, 1fr); }
-    
-    .grid-cell {
-      background: #ddd;
-      border: 1px solid #999;
-    }
-    
-    .grid-inputs {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    
-    .input-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    
-    .input-row label {
-      min-width: 80px;
-      font-weight: 600;
-      font-size: 14px;
-    }
-    
-    .input-row input {
-      width: 80px;
-      padding: 8px;
-      border: 2px solid #ddd;
-      border-radius: 4px;
-      font-size: 14px;
-      text-align: center;
-    }
-    
-    .input-row input:focus {
-      outline: none;
-      border-color: var(--primary-color);
-    }
-    
-    /* Visualizzazione margini */
-    .margins-visual {
-      position: relative;
-      width: 120px;
-      height: 160px;
-      border: 3px solid #333;
-      background: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .margins-inner {
-      width: 70%;
-      height: 70%;
-      background: #ddd;
-      border: 2px dashed #666;
-    }
-    
-    .margin-input {
-      position: absolute;
-      width: 60px;
-    }
-    
-    .margin-input.top { top: -35px; left: 50%; transform: translateX(-50%); }
-    .margin-input.right { right: -75px; top: 50%; transform: translateY(-50%); }
-    .margin-input.bottom { bottom: -35px; left: 50%; transform: translateX(-50%); }
-    .margin-input.left { left: -75px; top: 50%; transform: translateY(-50%); }
-    
-    .margin-input input {
-      width: 100%;
-      padding: 6px;
-      border: 2px solid #ddd;
-      border-radius: 4px;
-      text-align: center;
-      font-size: 13px;
-    }
-    
-    .margin-input input:focus {
-      outline: none;
-      border-color: var(--primary-color);
-    }
-    
-    .margin-input label {
-      display: block;
-      text-align: center;
-      font-size: 11px;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-    
-    /* Visualizzazione padding */
-    .padding-visual {
-      display: flex;
-      align-items: center;
-      gap: 25px;
-    }
-    
-    .padding-icon {
-      width: 100px;
-      height: 100px;
-      border: 3px solid #333;
-      background: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-    }
-    
-    .padding-outer {
-      width: 100%;
-      height: 100%;
-      background: #e8f0fa;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .padding-inner {
-      background: #fff;
-      border: 2px dashed #666;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      color: #999;
-    }
-    
-    /* Azioni settings */
-    .settings-actions {
-      display: flex;
-      gap: 12px;
-      justify-content: flex-end;
-      margin-top: 30px;
-      padding-top: 20px;
-      border-top: 2px solid #e0e0e0;
-    }
-    
-    .settings-btn {
-      padding: 10px 24px;
-      font-size: 14px;
-      font-weight: 600;
+    .action-btn {
+      padding: 12px 34px;
+      font-size: 18px;
+      background: #1d72b8;
+      color: #fff;
       border: none;
-      border-radius: 4px;
+      border-radius: 3px;
       cursor: pointer;
-      transition: all 0.2s;
+      font-family: Arial, sans-serif;
+      font-weight: 600;
+      transition: background 0.2s;
     }
-    
-    .settings-btn.primary {
-      background: var(--primary-color);
-      color: #fff;
-    }
-    
-    .settings-btn.primary:hover {
-      background: var(--primary-hover);
-    }
-    
-    .settings-btn.secondary {
-      background: #6c757d;
-      color: #fff;
-    }
-    
-    .settings-btn.secondary:hover {
-      background: #5a6268;
-    }
+    .action-btn:hover { background: #145283; }
 
-    /* ============================================
-       MODAL FORM
-       ============================================ */
+    /* MODAL/overlay form */
     #overlay {
       display: none;
       position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
+      top:0; left:0; right:0; bottom:0;
+      background: rgba(0,0,0,0.18);
       z-index: 100;
       align-items: center;
       justify-content: center;
-      animation: fadeIn 0.2s;
     }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    
-    @keyframes slideIn {
-      from { transform: translateY(-20px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-    
     #modal-form {
       display: flex;
       flex-direction: column;
-      gap: 20px;
-      padding: 40px;
+      gap: 18px;
+      padding: 38px 60px;
       background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-      min-width: 600px;
-      max-width: 90vw;
-      animation: slideIn 0.3s;
+      border-radius: 12px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.17);
+      min-width: 630px;
+      max-width: 98vw;
+      min-height: 380px;
     }
-    
-    .form-row {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+    #modal-form input[type='text'],
+    #modal-form textarea {
+      font-family: Arial, sans-serif;
+      border: 1px solid #999;
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 2px;
+      padding: 8px 10px;
+      font-size: 1.1em;
     }
-    
-    .form-row label {
-      font-size: 14px;
-      font-weight: 600;
-      color: #333;
-    }
-    
-    .form-row input,
-    .form-row textarea {
-      font-family: var(--font-family);
-      font-size: 14px;
-      padding: 10px 12px;
-      border: 2px solid #ddd;
-      border-radius: 4px;
-      transition: border-color 0.2s;
-    }
-    
-    .form-row input:focus,
-    .form-row textarea:focus {
-      outline: none;
-      border-color: var(--primary-color);
-    }
-    
-    .form-row textarea {
-      min-height: 150px;
+    #modal-form textarea {
+      min-height: 190px;
       resize: vertical;
-      font-family: var(--font-family);
     }
-    
-    .modal-actions {
-      display: flex;
-      gap: 12px;
-      margin-top: 10px;
-      justify-content: space-between;
-    }
-    
-    .modal-btn {
+    #modal-form label { font-size: 1em; font-weight: bold; }
+    #modal-form .form-row { display: flex; flex-direction: column; gap: 5px; }
+    #modal-form .actions { display: flex; gap: 22px; margin-top: 16px; justify-content: flex-end; align-items: center;}
+    #modal-form button {
       padding: 10px 24px;
-      font-size: 14px;
-      font-weight: 600;
+      font-size: 1.1em;
+      border-radius: 3px;
       border: none;
-      border-radius: 4px;
+      background: #1d72b8;
+      color: #fff;
       cursor: pointer;
-      transition: all 0.2s;
+      font-weight: bold;
+      transition: background .13s;
     }
-    
-    .modal-btn.primary {
-      background: var(--primary-color);
-      color: #fff;
+    #modal-form button:hover { background: #15548c; }
+    #cancella-cella {
+      background: #e44;
+      margin-right: auto;
     }
-    
-    .modal-btn.primary:hover {
-      background: var(--primary-hover);
-    }
-    
-    .modal-btn.secondary {
-      background: #6c757d;
-      color: #fff;
-    }
-    
-    .modal-btn.secondary:hover {
-      background: #5a6268;
-    }
-    
-    .modal-btn.danger {
-      background: var(--danger-color);
-      color: #fff;
-    }
-    
-    .modal-btn.danger:hover {
-      background: var(--danger-hover);
-    }
+    #cancella-cella:hover { background: #a10; }
 
-    /* ============================================
-       MODAL CONFERMA
-       ============================================ */
+    /* MODALE DI CONFERMA custom */
     #confirm-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      z-index: 200;
-      align-items: center;
-      justify-content: center;
+      display:none; position:fixed; top:0; left:0;right:0;bottom:0; background:rgba(0,0,0,0.2); z-index:200;
+      align-items:center; justify-content:center;
     }
-    
     #confirm-box {
-      background: #fff;
-      border-radius: 8px;
-      padding: 30px;
-      min-width: 400px;
-      max-width: 90vw;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-      animation: slideIn 0.3s;
+      background:#fff; border-radius:9px; padding:38px 45px; min-width:340px; max-width:93vw;
+      box-shadow:0 8px 38px rgba(0,0,0,0.19);
+      font-family:Arial,sans-serif;
+      display:flex; flex-direction:column; gap:28px;
     }
-    
-    #confirm-msg {
-      font-size: 16px;
-      color: #333;
-      line-height: 1.5;
-      margin-bottom: 24px;
-      white-space: pre-line;
-    }
-    
-    .confirm-actions {
-      display: flex;
-      gap: 12px;
-      justify-content: flex-end;
-    }
+    #confirm-box .msg { font-size:1.18em; color:#222; line-height: 1.4; }
+    #confirm-box .cf-btns { display:flex; gap:16px; justify-content:flex-end;}
+    .cf-btn { padding:10px 27px; border:none; border-radius:3px; font-size:1.11em; font-weight:bold; cursor:pointer; }
+    .cf-ok { background:#1d72b8;color:#fff;}
+    .cf-ok:hover {background:#15548c;}
+    .cf-cancel { background:#bbb;color:#333;}
+    .cf-cancel:hover {background:#888;}
 
-    /* ============================================
-       STAMPA
-       ============================================ */
-    @page {
-      size: A4;
-      margin: var(--margin-top) var(--margin-right) var(--margin-bottom) var(--margin-left);
-    }
-    
     @media print {
-      body {
-        background: #fff !important;
-      }
-      
-      #toolbar,
-      #overlay,
-      #settings-overlay,
-      #confirm-overlay,
-      .watermark {
-        display: none !important;
-      }
-      
-      #sheet-container {
-        padding: 0;
-        min-height: 0;
-      }
-      
-      #sheet {
-        box-shadow: none;
-        page-break-after: avoid;
-      }
-      
-      .label {
-        border: none !important;
-        background: none !important;
-        cursor: default !important;
-      }
-      
-      .label:hover {
-        background: none !important;
-        border-color: transparent !important;
-      }
+      #actions-bar, #overlay, .watermark, #confirm-overlay { display: none !important; }
+      body, html { background: #fff !important; }
+      #sheet { display: grid !important; }
+      .label { background: none !important; box-shadow: none !important; cursor: default !important; }
+      .label:hover { background: none !important; }
     }
   </style>
 </head>
 <body>
-  <!-- Barra strumenti fissa -->
-  <div id="toolbar">
-    <div class="toolbar-left">
-      <button id="settings-btn" class="tool-btn settings">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M12 1v6m0 6v6m9-9h-6M7 12H1m15.4-6.3l-4.2 4.2M9.8 14.1l-4.2 4.2m12.8 0l-4.2-4.2M9.8 9.9L5.6 5.7"></path>
-        </svg>
-        Impostazioni
-      </button>
-    </div>
-    <div class="toolbar-right">
-      <button id="print-btn" class="tool-btn">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="6 9 6 2 18 2 18 9"></polyline>
-          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-          <rect x="6" y="14" width="12" height="8"></rect>
-        </svg>
-        Stampa PDF
-      </button>
-      <button id="reset-btn" class="tool-btn danger">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="3 6 5 6 21 6"></polyline>
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-        </svg>
-        Cancella tutto
-      </button>
-    </div>
+  <!-- Barra azioni per stampa/resetta -->
+  <div id="actions-bar">
+    <button id="print-btn" class="action-btn">Stampa PDF</button>
+    <button id="reset-btn" class="action-btn" style="background:#e44;">Cancella tutto</button>
   </div>
-
-  <!-- Foglio etichette -->
-  <div id="sheet-container">
-    <div id="sheet"></div>
+  <div id="sheet">
+    <!-- 12 etichette con filigrana numerica -->
+    <div class="label" data-idx="0" filled="0"><div class="label-content"></div><div class="watermark">1</div></div>
+    <div class="label" data-idx="1" filled="0"><div class="label-content"></div><div class="watermark">2</div></div>
+    <div class="label" data-idx="2" filled="0"><div class="label-content"></div><div class="watermark">3</div></div>
+    <div class="label" data-idx="3" filled="0"><div class="label-content"></div><div class="watermark">4</div></div>
+    <div class="label" data-idx="4" filled="0"><div class="label-content"></div><div class="watermark">5</div></div>
+    <div class="label" data-idx="5" filled="0"><div class="label-content"></div><div class="watermark">6</div></div>
+    <div class="label" data-idx="6" filled="0"><div class="label-content"></div><div class="watermark">7</div></div>
+    <div class="label" data-idx="7" filled="0"><div class="label-content"></div><div class="watermark">8</div></div>
+    <div class="label" data-idx="8" filled="0"><div class="label-content"></div><div class="watermark">9</div></div>
+    <div class="label" data-idx="9" filled="0"><div class="label-content"></div><div class="watermark">10</div></div>
+    <div class="label" data-idx="10" filled="0"><div class="label-content"></div><div class="watermark">11</div></div>
+    <div class="label" data-idx="11" filled="0"><div class="label-content"></div><div class="watermark">12</div></div>
   </div>
-
-  <!-- Modal Impostazioni -->
-  <div id="settings-overlay">
-    <div id="settings-panel">
-      <h2>⚙️ Impostazioni Layout</h2>
-      
-      <!-- Griglia -->
-      <div class="setting-group">
-        <h3>📐 Griglia Etichette</h3>
-        <div class="setting-visual">
-          <div id="grid-preview" class="grid-icon cols-2 rows-6"></div>
-          <div class="grid-inputs">
-            <div class="input-row">
-              <label>Colonne:</label>
-              <input type="number" id="input-cols" min="1" max="10" value="2">
-            </div>
-            <div class="input-row">
-              <label>Righe:</label>
-              <input type="number" id="input-rows" min="1" max="20" value="6">
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Margini -->
-      <div class="setting-group">
-        <h3>📏 Margini Foglio (mm)</h3>
-        <div class="setting-visual" style="justify-content: center; position: relative; height: 200px;">
-          <div class="margins-visual">
-            <div class="margins-inner"></div>
-          </div>
-          <div class="margin-input top">
-            <label>Alto</label>
-            <input type="number" id="input-margin-top" min="0" max="50" step="0.5" value="5">
-          </div>
-          <div class="margin-input right">
-            <label>Destro</label>
-            <input type="number" id="input-margin-right" min="0" max="50" step="0.5" value="8">
-          </div>
-          <div class="margin-input bottom">
-            <label>Basso</label>
-            <input type="number" id="input-margin-bottom" min="0" max="50" step="0.5" value="5">
-          </div>
-          <div class="margin-input left">
-            <label>Sinistro</label>
-            <input type="number" id="input-margin-left" min="0" max="50" step="0.5" value="8">
-          </div>
-        </div>
-      </div>
-      
-      <!-- Padding -->
-      <div class="setting-group">
-        <h3>📦 Padding Celle (mm)</h3>
-        <div class="setting-visual padding-visual">
-          <div class="padding-icon">
-            <div class="padding-outer">
-              <div id="padding-preview" class="padding-inner">Contenuto</div>
-            </div>
-          </div>
-          <div class="input-row">
-            <label>Padding:</label>
-            <input type="number" id="input-padding" min="0" max="20" step="0.5" value="2">
-          </div>
-        </div>
-      </div>
-      
-      <div class="settings-actions">
-        <button id="settings-cancel" class="settings-btn secondary">Annulla</button>
-        <button id="settings-apply" class="settings-btn primary">Applica Modifiche</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal inserimento/modifica -->
+  <!-- Overlay/Modal inserimento e modifica -->
   <div id="overlay">
     <form id="modal-form" autocomplete="off">
-      <h2 style="margin: 0 0 10px 0; color: #333;">Modifica Etichetta</h2>
-      
+      <div class="form-row">
+        <label for="num-atto">Numero atto:</label>
+        <input type="text" id="num-atto" maxlength="30">
+      </div>
       <div class="form-row">
         <label for="annotazione">Annotazione:</label>
         <textarea id="annotazione" maxlength="800"></textarea>
       </div>
-      
       <div class="form-row">
         <label for="city-date">Città/Data:</label>
-        <input type="text" id="city-date" maxlength="80">
+        <input type="text" id="city-date" maxlength="40">
       </div>
-      
-      <div class="form-row">
-        <label for="num-atto">Numero atto:</label>
-        <input type="text" id="num-atto" maxlength="50">
-      </div>
-      
-      <div class="modal-actions">
-        <button type="button" id="delete-btn" class="modal-btn danger">Cancella</button>
-        <div style="display: flex; gap: 12px;">
-          <button type="button" id="cancel-btn" class="modal-btn secondary">Annulla</button>
-          <button type="submit" class="modal-btn primary">Salva</button>
-        </div>
+      <div class="actions">
+        <button type="button" id="cancella-cella">Cancella cella</button>
+        <button type="button" id="annulla">Annulla</button>
+        <button type="submit">OK</button>
       </div>
     </form>
   </div>
-
-  <!-- Modal conferma -->
+  <!-- Overlay per modale conferma custom -->
   <div id="confirm-overlay">
     <div id="confirm-box">
-      <div id="confirm-msg"></div>
-      <div class="confirm-actions">
-        <button id="cf-cancel" class="modal-btn secondary">Annulla</button>
-        <button id="cf-ok" class="modal-btn primary">Conferma</button>
+      <div class="msg" id="confirm-msg"></div>
+      <div class="cf-btns">
+        <button class="cf-btn cf-cancel" id="cf-cancel" type="button">Annulla</button>
+        <button class="cf-btn cf-ok" id="cf-ok" type="button">Conferma</button>
       </div>
     </div>
   </div>
-
   <script>
-    // ============================================
-    // CONFIGURAZIONE
-    // ============================================
-    const CONFIG = {
-      cols: 2,
-      rows: 6,
-      marginTop: 5,
-      marginRight: 8,
-      marginBottom: 5,
-      marginLeft: 8,
-      cellPadding: 2,
-      defaultCity: 'Viterbo'
-    };
-
-    // ============================================
-    // UTILITY FUNCTIONS
-    // ============================================
-    function getDataOggi() {
-      const d = new Date();
-      return ("0" + d.getDate()).slice(-2) + '-' + 
-             ("0" + (d.getMonth() + 1)).slice(-2) + '-' + 
-             d.getFullYear();
-    }
-
-    function wrapCodici(text) {
-      if (!text) return "";
-      return text.replace(/\b(\d{2,}-)+\d{2,}\b/g, match => {
-        return `<span class="nowrap">${match}</span>`;
-      });
-    }
-
-    function showConfirm(msg, callback) {
+    function showConfirm(msg, cb) {
       const overlay = document.getElementById('confirm-overlay');
-      const msgEl = document.getElementById('confirm-msg');
-      const btnCancel = document.getElementById('cf-cancel');
-      const btnOk = document.getElementById('cf-ok');
-      
-      msgEl.textContent = msg;
+      const m = document.getElementById('confirm-msg');
+      const bCancel = document.getElementById('cf-cancel');
+      const bOk = document.getElementById('cf-ok');
+      m.textContent = msg;
       overlay.style.display = 'flex';
-      
-      setTimeout(() => btnCancel.focus(), 100);
-      
-      const cleanup = () => {
-        overlay.style.display = 'none';
-        btnCancel.onclick = null;
-        btnOk.onclick = null;
-      };
-      
-      btnCancel.onclick = () => { cleanup(); callback(false); };
-      btnOk.onclick = () => { cleanup(); callback(true); };
+      setTimeout(() => bCancel.focus(), 150);
+      bCancel.onclick = () => { overlay.style.display = 'none'; cb(false); };
+      bOk.onclick = () => { overlay.style.display = 'none'; cb(true); };
+      overlay.onkeydown = e => { if(e.key === "Escape") { overlay.style.display = 'none'; cb(false); }};
     }
 
-    function applyConfig() {
-      const root = document.documentElement;
-      root.style.setProperty('--grid-cols', CONFIG.cols);
-      root.style.setProperty('--grid-rows', CONFIG.rows);
-      root.style.setProperty('--margin-top', CONFIG.marginTop + 'mm');
-      root.style.setProperty('--margin-right', CONFIG.marginRight + 'mm');
-      root.style.setProperty('--margin-bottom', CONFIG.marginBottom + 'mm');
-      root.style.setProperty('--margin-left', CONFIG.marginLeft + 'mm');
-      root.style.setProperty('--cell-padding', CONFIG.cellPadding + 'mm');
+    function getDataOggi() {
+      let d = new Date();
+      return ("0"+d.getDate()).slice(-2)+'/'+("0"+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();
     }
 
-    // ============================================
-    // DATA MANAGEMENT
-    // ============================================
-    let labels = [];
+    // Funzione per avvolgere i codici numerici con trattini in span non-breakable
+    function wrapCodici(input) {
+      if (!input) return "";
+      // Trova sequenze di cifre separate da trattini (almeno 3 gruppi, min 2 cifre per gruppo)
+      return input.replace(/\b(\d{2,}-)+\d{2,}\b/g, function(codice){
+        return '<span class="nowrap">' + codice + '</span>';
+      });
+    }
+
+    const etichette = Array(12).fill().map(() => ({atto:"", nota:"", cd:""}));
     let currentIdx = null;
-    let dragSourceIdx = null;
 
-    function initLabels() {
-      const total = CONFIG.cols * CONFIG.rows;
-      labels = Array(total).fill().map(() => ({
-        nota: '',
-        cityDate: '',
-        atto: ''
-      }));
+    const overlay = document.getElementById("overlay");
+    const modal = document.getElementById("modal-form");
+    const inputAtto = document.getElementById("num-atto");
+    const inputNota = document.getElementById("annotazione");
+    const inputCd = document.getElementById("city-date");
+    const btnAnnulla = document.getElementById("annulla");
+    const btnCancellaCella = document.getElementById("cancella-cella");
+    const btnPrint = document.getElementById("print-btn");
+    const btnReset = document.getElementById("reset-btn");
+
+    function aggiornaEtichetta(idx) {
+      const { atto, nota, cd } = etichette[idx];
+      // Applica il wrap ai codici solo nell'annotazione
+      const notaProcessed = wrapCodici(nota);
+      let txt = '';
+      if (atto) txt += atto + '\n';
+      if (notaProcessed) txt += notaProcessed + '\n';
+      if (cd) txt += cd;
+      // Usa innerHTML invece di textContent per supportare gli span
+      document.querySelector(`.label[data-idx="${idx}"] .label-content`).innerHTML = txt.trim();
+      const isFilled = (atto || nota || cd) ? "1" : "0";
+      document.querySelector(`.label[data-idx="${idx}"]`).setAttribute('filled', isFilled);
     }
 
-    // ============================================
-    // DOM CREATION
-    // ============================================
-    function createLabels() {
-      const sheet = document.getElementById('sheet');
-      sheet.innerHTML = '';
-      
-      const total = CONFIG.cols * CONFIG.rows;
-      
-      for (let i = 0; i < total; i++) {
-        const label = document.createElement('div');
-        label.className = 'label';
-        label.dataset.idx = i;
-        label.dataset.filled = 'false';
-        
-        label.innerHTML = `
-          <div class="label-main"></div>
-          <div class="label-atto"></div>
-          <div class="watermark">${i + 1}</div>
-        `;
-        
-        label.addEventListener('click', (e) => {
-          if (!label.classList.contains('dragging')) {
-            openModal(i);
-          }
-        });
-        
-        setupDragAndDrop(label, i);
-        sheet.appendChild(label);
+    function resetEtichette() {
+      for(let idx = 0; idx < 12; ++idx) {
+        etichette[idx] = {atto:"", nota:"", cd:""};
+        aggiornaEtichetta(idx);
       }
-      
-      // Aggiorna tutte le etichette con dati esistenti
-      labels.forEach((_, idx) => updateLabel(idx));
     }
 
-    // ============================================
-    // DRAG & DROP FUNCTIONS
-    // ============================================
-    function setupDragAndDrop(label, idx) {
-      label.setAttribute('draggable', 'false');
-      
-      label.addEventListener('dragstart', (e) => {
-        const isFilled = label.dataset.filled === 'true';
-        if (!isFilled) {
-          e.preventDefault();
-          return;
+    function salvaDati() {
+        if (currentIdx === null) return;
+        etichette[currentIdx] = {
+            atto: inputAtto.value.trim(),
+            nota: inputNota.value.trim(),
+            cd: inputCd.value.trim()
+        };
+        aggiornaEtichetta(currentIdx);
+        overlay.style.display = 'none';
+        currentIdx = null;
+    }
+
+    document.querySelectorAll('.label').forEach((lab, idx) => {
+      lab.addEventListener("click", () => {
+        currentIdx = idx;
+        const { atto, nota, cd } = etichette[idx];
+        inputAtto.value = atto || '';
+        inputNota.value = nota || '';
+        inputCd.value = cd || `Viterbo, ${getDataOggi()}`;
+        overlay.style.display = "flex";
+        setTimeout(() => inputAtto.focus(), 150);
+      });
+    });
+
+    btnAnnulla.addEventListener("click", () => { overlay.style.display = "none"; });
+
+    btnCancellaCella.addEventListener("click", () => {
+      if(currentIdx === null) return;
+      showConfirm('Vuoi cancellare il contenuto di questa cella?', ok => {
+        if(ok) {
+          etichette[currentIdx] = {atto:"", nota:"", cd:""};
+          aggiornaEtichetta(currentIdx);
+          overlay.style.display = "none";
+          currentIdx = null;
         }
-        
-        dragSourceIdx = idx;
-        label.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/html', label.innerHTML);
       });
-      
-      label.addEventListener('dragend', (e) => {
-        label.classList.remove('dragging');
-        document.querySelectorAll('.label').forEach(l => l.classList.remove('drag-over'));
-      });
-      
-      label.addEventListener('dragover', (e) => {
-        if (dragSourceIdx === null || dragSourceIdx === idx) return;
+    });
+
+    modal.addEventListener("submit", e => {
         e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        label.classList.add('drag-over');
-      });
-      
-      label.addEventListener('dragleave', (e) => {
-        label.classList.remove('drag-over');
-      });
-      
-      label.addEventListener('drop', (e) => {
-        e.preventDefault();
-        label.classList.remove('drag-over');
-        
-        if (dragSourceIdx === null || dragSourceIdx === idx) return;
-        
-        const targetIdx = idx;
-        const targetFilled = labels[targetIdx].nota || labels[targetIdx].cityDate || labels[targetIdx].atto;
-        
-        if (targetFilled) {
-          showConfirm(
-            `La cella ${targetIdx + 1} contiene già dei dati.\n\nVuoi sovrascriverli spostando qui il contenuto della cella ${dragSourceIdx + 1}?`,
-            (ok) => {
-              if (ok) {
-                performMove(dragSourceIdx, targetIdx);
-              }
-              dragSourceIdx = null;
-            }
-          );
+        const campiVuoti = [];
+        if (!inputAtto.value.trim()) campiVuoti.push("Numero atto");
+        if (!inputNota.value.trim()) campiVuoti.push("Annotazione");
+        if (!inputCd.value.trim()) campiVuoti.push("Città/Data");
+
+        if (campiVuoti.length > 0) {
+            const msg = `I seguenti campi sono vuoti:\n${campiVuoti.join(', ')}.\n\nProcedere comunque?`;
+            showConfirm(msg, ok => {
+                if (ok) salvaDati();
+            });
         } else {
-          performMove(dragSourceIdx, targetIdx);
-          dragSourceIdx = null;
+            salvaDati();
         }
-      });
-    }
-    
-    function performMove(fromIdx, toIdx) {
-      labels[toIdx] = { ...labels[fromIdx] };
-      labels[fromIdx] = { nota: '', cityDate: '', atto: '' };
-      updateLabel(fromIdx);
-      updateLabel(toIdx);
-    }
-    
-    function updateDraggableState(idx) {
-      const label = document.querySelector(`.label[data-idx="${idx}"]`);
-      if (!label) return;
-      const isFilled = label.dataset.filled === 'true';
-      label.setAttribute('draggable', isFilled ? 'true' : 'false');
-    }
-
-    // ============================================
-    // UPDATE FUNCTIONS
-    // ============================================
-    function updateLabel(idx) {
-      if (idx >= labels.length) return;
-      
-      const data = labels[idx];
-      const label = document.querySelector(`.label[data-idx="${idx}"]`);
-      if (!label) return;
-      
-      const mainEl = label.querySelector('.label-main');
-      const attoEl = label.querySelector('.label-atto');
-      
-      let mainContent = '';
-	  if (data.nota) {
-        let nota = data.nota.trim();
-        if (nota && !nota.endsWith('.')) {
-          nota += '.';
-        }
-        mainContent += wrapCodici(nota);
-      }
-		
-      if (data.cityDate) {
-        if (mainContent) mainContent += '\n';
-        mainContent += data.cityDate;
-      }
-      
-      mainEl.innerHTML = mainContent;
-      attoEl.textContent = data.atto;
-      
-      const isFilled = !!(data.nota || data.cityDate || data.atto);
-      label.dataset.filled = isFilled;
-      updateDraggableState(idx);
-    }
-
-    // ============================================
-    // OVERFLOW CHECK FUNCTION
-    // ============================================
-    function checkOverflow(idx, nota, cityDate, atto) {
-      const testLabel = document.createElement('div');
-      testLabel.className = 'label';
-      testLabel.style.position = 'absolute';
-      testLabel.style.visibility = 'hidden';
-      testLabel.style.pointerEvents = 'none';
-      
-      const realLabel = document.querySelector('.label');
-      const computedStyle = window.getComputedStyle(realLabel);
-      testLabel.style.width = computedStyle.width;
-      testLabel.style.height = computedStyle.height;
-      testLabel.style.padding = computedStyle.padding;
-      
-      testLabel.innerHTML = `
-        <div class="label-main"></div>
-        <div class="label-atto"></div>
-      `;
-      
-      document.body.appendChild(testLabel);
-      
-      const mainEl = testLabel.querySelector('.label-main');
-      const attoEl = testLabel.querySelector('.label-atto');
-      
-      let mainContent = '';
-	  if (nota) {
-	    mainContent += wrapCodici(nota);
-	  }
-	  
-      if (cityDate) {
-        if (mainContent) mainContent += '\n';
-        mainContent += cityDate;
-      }
-      
-      mainEl.innerHTML = mainContent;
-      attoEl.textContent = atto;
-      
-      const mainOverflow = mainEl.scrollHeight > mainEl.clientHeight;
-      const attoOverflow = attoEl.scrollWidth > attoEl.clientWidth;
-      
-      document.body.removeChild(testLabel);
-      
-      return {
-        hasOverflow: mainOverflow || attoOverflow,
-        mainOverflow,
-        attoOverflow
-      };
-    }
-
-    // ============================================
-    // MODAL FUNCTIONS
-    // ============================================
-    function openModal(idx) {
-      currentIdx = idx;
-      const data = labels[idx];
-      
-      document.getElementById('annotazione').value = data.nota;
-      document.getElementById('city-date').value = data.cityDate || `${CONFIG.defaultCity}, ${getDataOggi()}`;
-      document.getElementById('num-atto').value = data.atto;
-      
-      document.getElementById('overlay').style.display = 'flex';
-      setTimeout(() => document.getElementById('annotazione').focus(), 100);
-    }
-
-    function closeModal() {
-      document.getElementById('overlay').style.display = 'none';
-      currentIdx = null;
-    }
-
-    function saveLabel() {
-      if (currentIdx === null) return;
-      
-      const nota = document.getElementById('annotazione').value.trim();
-      const cityDate = document.getElementById('city-date').value.trim();
-      const atto = document.getElementById('num-atto').value.trim();
-      
-      const overflowCheck = checkOverflow(currentIdx, nota, cityDate, atto);
-      
-      if (overflowCheck.hasOverflow) {
-        let errorMsg = '⚠️ ERRORE: Il contenuto supera lo spazio disponibile!\n\n';
-        if (overflowCheck.mainOverflow) {
-          errorMsg += '• Il testo dell\'annotazione e/o città/data è troppo lungo\n';
-        }
-        if (overflowCheck.attoOverflow) {
-          errorMsg += '• Il numero atto è troppo lungo\n';
-        }
-        errorMsg += '\nRiduci il testo e riprova.';
-        
-        alert(errorMsg);
-        return;
-      }
-      
-      const empty = [];
-      if (!nota) empty.push('Annotazione');
-      if (!cityDate) empty.push('Città/Data');
-      if (!atto) empty.push('Numero atto');
-      
-      if (empty.length > 0) {
-        const msg = `I seguenti campi sono vuoti:\n${empty.join(', ')}\n\nProcedere comunque?`;
-        showConfirm(msg, ok => {
-          if (ok) {
-            labels[currentIdx] = { nota, cityDate, atto };
-            updateLabel(currentIdx);
-            closeModal();
-          }
-        });
-      } else {
-        labels[currentIdx] = { nota, cityDate, atto };
-        updateLabel(currentIdx);
-        closeModal();
-      }
-    }
-
-    function deleteLabel() {
-      if (currentIdx === null) return;
-      
-      showConfirm('Vuoi cancellare il contenuto di questa etichetta?', ok => {
-        if (ok) {
-          labels[currentIdx] = { nota: '', cityDate: '', atto: '' };
-          updateLabel(currentIdx);
-          closeModal();
-        }
-      });
-    }
-
-    function resetAll() {
-      showConfirm('Sei sicuro di voler cancellare TUTTE le etichette?', ok => {
-        if (ok) {
-          labels.forEach((_, i) => {
-            labels[i] = { nota: '', cityDate: '', atto: '' };
-            updateLabel(i);
-          });
-        }
-      });
-    }
-
-    // ============================================
-    // SETTINGS PANEL
-    // ============================================
-    function openSettings() {
-      document.getElementById('input-cols').value = CONFIG.cols;
-      document.getElementById('input-rows').value = CONFIG.rows;
-      document.getElementById('input-margin-top').value = CONFIG.marginTop;
-      document.getElementById('input-margin-right').value = CONFIG.marginRight;
-      document.getElementById('input-margin-bottom').value = CONFIG.marginBottom;
-      document.getElementById('input-margin-left').value = CONFIG.marginLeft;
-      document.getElementById('input-padding').value = CONFIG.cellPadding;
-      
-      updateGridPreview();
-      updatePaddingPreview();
-      
-      document.getElementById('settings-overlay').style.display = 'flex';
-    }
-
-    function closeSettings() {
-      document.getElementById('settings-overlay').style.display = 'none';
-    }
-
-    function applySettings() {
-      const newCols = parseInt(document.getElementById('input-cols').value);
-      const newRows = parseInt(document.getElementById('input-rows').value);
-      const newTotal = newCols * newRows;
-      const oldTotal = CONFIG.cols * CONFIG.rows;
-      
-      // Salva dati esistenti
-      const oldLabels = [...labels];
-      
-      // Aggiorna config
-      CONFIG.cols = newCols;
-      CONFIG.rows = newRows;
-      CONFIG.marginTop = parseFloat(document.getElementById('input-margin-top').value);
-      CONFIG.marginRight = parseFloat(document.getElementById('input-margin-right').value);
-      CONFIG.marginBottom = parseFloat(document.getElementById('input-margin-bottom').value);
-      CONFIG.marginLeft = parseFloat(document.getElementById('input-margin-left').value);
-      CONFIG.cellPadding = parseFloat(document.getElementById('input-padding').value);
-      
-      // Applica stili CSS
-      applyConfig();
-      
-      // Ricostruisci array labels
-      initLabels();
-      
-      // Ripristina dati nelle celle che esistono ancora
-      const maxCopy = Math.min(oldTotal, newTotal);
-      for (let i = 0; i < maxCopy; i++) {
-        labels[i] = oldLabels[i];
-      }
-      
-      // Ricrea griglia
-      createLabels();
-      closeSettings();
-    }
-
-    function updateGridPreview() {
-      const preview = document.getElementById('grid-preview');
-      const cols = parseInt(document.getElementById('input-cols').value) || 2;
-      const rows = parseInt(document.getElementById('input-rows').value) || 6;
-      
-      preview.className = `grid-icon cols-${cols} rows-${rows}`;
-      preview.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-      preview.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
-      
-      const total = cols * rows;
-      preview.innerHTML = '';
-      for (let i = 0; i < total; i++) {
-        const cell = document.createElement('div');
-        cell.className = 'grid-cell';
-        preview.appendChild(cell);
-      }
-    }
-
-    function updatePaddingPreview() {
-      const preview = document.getElementById('padding-preview');
-      const padding = parseFloat(document.getElementById('input-padding').value) || 2;
-      const percentage = Math.min(40, padding * 3);
-      
-      preview.style.width = `${100 - percentage}%`;
-      preview.style.height = `${100 - percentage}%`;
-    }
-
-    // ============================================
-    // EVENT LISTENERS
-    // ============================================
-    document.getElementById('modal-form').addEventListener('submit', e => {
-      e.preventDefault();
-      saveLabel();
     });
 
-    document.getElementById('cancel-btn').addEventListener('click', closeModal);
-    document.getElementById('delete-btn').addEventListener('click', deleteLabel);
-    document.getElementById('print-btn').addEventListener('click', () => window.print());
-    document.getElementById('reset-btn').addEventListener('click', resetAll);
-
-    document.getElementById('settings-btn').addEventListener('click', openSettings);
-    document.getElementById('settings-cancel').addEventListener('click', closeSettings);
-    document.getElementById('settings-apply').addEventListener('click', applySettings);
-
-    document.getElementById('input-cols').addEventListener('input', updateGridPreview);
-    document.getElementById('input-rows').addEventListener('input', updateGridPreview);
-    document.getElementById('input-padding').addEventListener('input', updatePaddingPreview);
-
-    window.addEventListener('keydown', e => {
-      if (e.key === 'Escape') {
-        if (document.getElementById('overlay').style.display === 'flex') {
-          closeModal();
-        } else if (document.getElementById('settings-overlay').style.display === 'flex') {
-          closeSettings();
-        }
+    window.addEventListener("keydown", e => {
+      if(e.key === "Escape" && overlay.style.display === "flex") {
+        overlay.style.display = "none";
       }
     });
 
-    // ============================================
-    // INIT
-    // ============================================
-    applyConfig();
-    initLabels();
-    createLabels();
+    btnReset.addEventListener("click", () => {
+      showConfirm('Sei sicuro di voler cancellare tutte le etichette?', ok => {
+        if(ok) resetEtichette();
+      });
+    });
+
+    btnPrint.addEventListener("click", () => window.print());
+
+    resetEtichette(); // Inizializza al caricamento
   </script>
 </body>
 </html>
+
+
+
+
+
+
