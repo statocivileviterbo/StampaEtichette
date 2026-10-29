@@ -1,0 +1,2206 @@
+<!DOCTYPE html>
+<!--
+  Versione: 1.8 (2026-10-29)
+  Novità: due modalità di importazione da Excel nel pannello Batch, affiancate
+          (ognuna con il proprio pulsante per scegliere il file). Usandone una,
+          l'altra si disattiva; cliccando sul riquadro disattivato lo si riattiva.
+          - Singola riga (a sinistra): uno o più file, di ogni file la prima riga
+            sotto le intestazioni (come nella 1.7).
+          - Multiriga (a destra): un solo file, si scelgono la riga iniziale e
+            quella finale (numeri di riga come in Excel; la riga 1 è delle
+            intestazioni). L'intervallo non può superare le etichette libere
+            (es. 12 libere: dalla riga 2 alla 13). Le righe senza "atto" né
+            "testo annot." vengono saltate.
+          In entrambe le modalità le etichette vengono inserite all'indietro a
+          partire dal numero scelto in "Inizia dall'etichetta" (predefinito
+          l'ultima, 12; si può scendere fino a 1): 12, 11, 10... Le etichette
+          dopo quel numero (già usate sul foglio) e quelle già compilate
+          vengono saltate.
+          Controllo incrociato tra "Inizia dall'etichetta" e le righe/file scelti:
+          se le etichette non bastano i campi diventano rossi, viene indicato
+          il valore da correggere e il pulsante Importa resta disattivato.
+          Le colonne sono le stesse in entrambe le modalità: "atto" e
+          "testo annot." obbligatorie, "n.prot" facoltativa; le altre ignorate.
+
+  Versione 1.7 (2026-10-24)
+  Novità: copia/incolla per la doppia copia. Sul bollino giallo "DOPPIA COPIA"
+          c'è l'icona Copia; dopo averla cliccata, passando su una cella vuota
+          compare "Incolla qui". Incollando, l'etichetta viene duplicata e il
+          bollino/riquadro giallo scompare da entrambe. Esc annulla la copia.
+          Se poi si modifica il testo o l'atto di una delle due, il bollino
+          ricompare (va rifatta la copia).
+
+  Versione 1.6 (2026-10-24)
+  Novità: avviso "DOPPIA COPIA" per gli atti dal 2018 in poi (registri ancora
+          in archivio in doppio originale). L'anno viene letto dal campo atto
+          (es. "2019 1A n. 5"); i codici ANSC sono esclusi. Avviso al salvataggio
+          manuale e prima dell'importazione da Excel; sullo schermo le etichette
+          interessate mostrano un bollino (non stampato). L'anno di partenza si
+          cambia in CONFIG.annoDoppiaCopia.
+
+  Versione 1.5 (2026-10-23)
+  Novità: nel Batch il campo in basso a destra riporta "n.prot - atto"
+          (es. "20549 - 1984 1A n. 92"). Se uno dei due manca viene scritto solo
+          l'altro, senza trattino. Se il file non ha la colonna "n.prot" viene
+          usato solo "atto", come nelle versioni precedenti.
+-->
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Etichette A4 - Sistema Flessibile</title>
+  <style>
+    /* ============================================
+       PARAMETRI CONFIGURABILI
+       ============================================ */
+    :root {
+      /* Formato foglio */
+      --page-width: 210mm;
+      --page-height: 297mm;
+      
+      /* Margini foglio (top, right, bottom, left) */
+      --margin-top: 5mm;
+      --margin-right: 8mm;
+      --margin-bottom: 5mm;
+      --margin-left: 8mm;
+      
+      /* Padding interno celle (uguale per tutti i lati) */
+      --cell-padding: 2mm;
+      
+      /* Numero etichette (colonne x righe) */
+      --grid-cols: 2;
+      --grid-rows: 6;
+      
+      /* Stile testo */
+      --font-family: Arial, sans-serif;
+      --font-size: 10pt;
+      --text-color: #111;
+      
+      /* Colori interfaccia */
+      --primary-color: #1d72b8;
+      --primary-hover: #145283;
+      --danger-color: #e44;
+      --danger-hover: #a10;
+      --watermark-color: #bcd;
+      
+      /* Calcoli automatici */
+      --work-width: calc(var(--page-width) - var(--margin-left) - var(--margin-right));
+      --work-height: calc(var(--page-height) - var(--margin-top) - var(--margin-bottom));
+    }
+
+    /* ============================================
+       RESET E BASE
+       ============================================ */
+    * { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-family);
+      background: #f5f5f5;
+    }
+
+    /* ============================================
+       BARRA STRUMENTI FISSA
+       ============================================ */
+    #toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 70px;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 30px;
+    }
+    
+    .toolbar-left,
+    .toolbar-right {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    
+    .tool-btn {
+      padding: 10px 20px;
+      font-size: 15px;
+      background: var(--primary-color);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: var(--font-family);
+      font-weight: 600;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .tool-btn:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(29, 114, 184, 0.3);
+    }
+    
+    .tool-btn.danger {
+      background: var(--danger-color);
+    }
+    
+    .tool-btn.danger:hover {
+      background: var(--danger-hover);
+      box-shadow: 0 4px 12px rgba(238, 68, 68, 0.3);
+    }
+    
+    .tool-btn.settings {
+      background: #6c757d;
+    }
+    
+    .batch-opt {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      color: #333;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .batch-range-row {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .batch-range-row label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      color: #333;
+    }
+
+    .batch-range-row input {
+      width: 80px;
+      padding: 4px 6px;
+      font-size: 14px;
+    }
+
+    .app-version {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 15px;
+      font-weight: 600;
+      color: #333;
+      background: #eef3f8;
+      border: 1px solid #c9d8e6;
+      border-radius: 4px;
+      padding: 4px 12px;
+    }
+
+    .tool-btn.settings:hover {
+      background: #5a6268;
+      box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+    }
+
+    /* ============================================
+       FOGLIO E GRIGLIA ETICHETTE
+       ============================================ */
+    #sheet-container {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 100px 20px 30px 20px;
+      min-height: calc(100vh - 70px);
+    }
+    
+	#sheet {
+	  width: var(--page-width);
+	  height: var(--page-height);
+	  background: #fff;
+	  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+	  padding: var(--margin-top) var(--margin-right) var(--margin-bottom) var(--margin-left);
+	}
+
+	#grid {
+	  width: 100%;
+	  height: 100%;
+	  display: grid;
+	  grid-template-columns: repeat(var(--grid-cols), 1fr);
+	  grid-template-rows: repeat(var(--grid-rows), 1fr);
+	  gap: 0;
+	}
+
+    /* ============================================
+       STRUTTURA ETICHETTA
+       ============================================ */
+    .label {
+      position: relative;
+      padding: var(--cell-padding);
+      cursor: pointer;
+      border: 1px solid #e0e0e0;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .label:hover {
+      background: #e8f0fa;
+      border-color: var(--primary-color);
+      z-index: 1;
+    }
+    
+    .label[data-filled="true"] {
+      cursor: grab;
+    }
+    
+    .label[data-filled="true"]:active {
+      cursor: grabbing;
+    }
+    
+    .label.dragging {
+      opacity: 0.5;
+      border: 2px dashed var(--primary-color);
+    }
+    
+    .label.drag-over {
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      transform: scale(1.02);
+    }
+
+    /* Contenuto principale (annotazione + città/data) */
+	.label-main {
+	  flex: 1;
+	  font-family: var(--font-family);
+	  font-size: var(--font-size);
+	  color: var(--text-color);
+	  white-space: pre-wrap;
+	  word-wrap: break-word;
+	  word-break: normal;
+	  overflow-wrap: break-word;
+	  position: relative;
+	  z-index: 2;
+	  overflow: hidden;
+	}
+
+    /* Numero atto (angolo basso destra) */
+    .label-atto {
+      position: absolute;
+      bottom: var(--cell-padding);
+      right: var(--cell-padding);
+      font-family: var(--font-family);
+      font-size: var(--font-size);
+      font-style: italic;
+      color: var(--text-color);
+      background: transparent;
+      z-index: 3;
+      pointer-events: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 80%;
+    }
+
+    /* Bollino "DOPPIA COPIA" (solo a schermo, non stampato) */
+    .label-dup {
+      display: none;
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      z-index: 4;
+      align-items: center;
+      gap: 4px;
+      font-family: Arial, sans-serif;
+      font-size: 9px;
+      font-weight: bold;
+      letter-spacing: 0.3px;
+      color: #7a4a00;
+      background: #ffe08a;
+      border: 1px solid #e0a800;
+      border-radius: 3px;
+      padding: 1px 4px;
+    }
+
+    .label[data-dup="true"] .label-dup {
+      display: flex;
+    }
+
+    /* Pulsante Copia sul bollino */
+    .dup-copy {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 16px;
+      padding: 0;
+      border: 1px solid #b07d00;
+      border-radius: 3px;
+      background: #fff;
+      color: #7a4a00;
+      cursor: pointer;
+    }
+
+    .dup-copy:hover {
+      background: #7a4a00;
+      color: #fff;
+    }
+
+    /* Etichetta copiata, in attesa di essere incollata */
+    .label.copy-source {
+      outline: 2px dashed var(--primary-color);
+      outline-offset: -3px;
+    }
+
+    .label.copy-source .dup-copy {
+      background: var(--primary-color);
+      border-color: var(--primary-color);
+      color: #fff;
+    }
+
+    /* Overlay "Incolla qui" sulle celle vuote (solo con una copia attiva) */
+    .label-paste {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      border: 2px dashed var(--primary-color);
+      background: rgba(232, 240, 250, 0.92);
+      color: var(--primary-color);
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: copy;
+    }
+
+    body.clip-active .label[data-filled="false"]:hover .label-paste {
+      display: flex;
+    }
+
+    /* Avviso in basso durante la copia */
+    #clip-toast {
+      display: none;
+      position: fixed;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%);
+      z-index: 60;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 16px;
+      border-radius: 6px;
+      background: #333;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    }
+
+    body.clip-active #clip-toast {
+      display: flex;
+    }
+
+    #clip-toast button {
+      border: 1px solid #fff;
+      border-radius: 4px;
+      background: transparent;
+      color: #fff;
+      padding: 3px 10px;
+      cursor: pointer;
+    }
+
+    .label[data-dup="true"] {
+      box-shadow: inset 0 0 0 2px #f0b400;
+    }
+
+    /* Filigrana numerica */
+    .watermark {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-family);
+      font-size: 62pt;
+      font-weight: bold;
+      color: var(--watermark-color);
+      opacity: 0.37;
+      pointer-events: none;
+      user-select: none;
+      z-index: 1;
+      transition: opacity 0.2s;
+    }
+    
+    .label[data-filled="true"] .watermark {
+      opacity: 0;
+    }
+
+    /* Classe per codici non separabili */
+    .nowrap {
+	  display: inline-block;
+	  white-space: nowrap;
+    }
+
+    /* ============================================
+       MODAL IMPOSTAZIONI
+       ============================================ */
+    #settings-overlay,
+    #batch-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.2s;
+    }
+    
+    #settings-panel,
+    #batch-panel {
+      background: #fff;
+      border-radius: 8px;
+      padding: 30px;
+      min-width: 700px;
+      max-width: 90vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      animation: slideIn 0.3s;
+    }
+    
+    #batch-panel { width: min(900px, 92vw); min-width: 0; }
+
+    .batch-frames {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 30px;
+    }
+
+    .batch-frame {
+      min-width: 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      transition: opacity 0.15s, border-color 0.15s;
+    }
+
+    .batch-frame.active { border-color: var(--primary-color); background: #fff; }
+    .batch-frame.inactive { opacity: 0.45; cursor: pointer; }
+    .batch-frame.inactive > * { pointer-events: none; }
+
+    .batch-frame h3 {
+      margin: 0 0 10px 0;
+      color: #555;
+      font-size: 16px;
+    }
+
+    .batch-frame input[type="file"] { max-width: 100%; }
+
+    input.batch-invalid {
+      border: 2px solid #c0392b;
+      background: #fdecea;
+      outline: none;
+    }
+
+    .settings-btn:disabled,
+    .settings-btn:disabled:hover {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: var(--primary-color);
+    }
+
+    .batch-help {
+      margin: 0 0 12px;
+      font-size: 12px;
+      color: #666;
+      min-height: 4.5em;
+    }
+
+    .batch-msg {
+      margin: 8px 0 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: #333;
+      min-height: 2.8em;
+    }
+
+    @media (max-width: 700px) {
+      .batch-frames { grid-template-columns: 1fr; }
+    }
+
+    #settings-panel h2,
+    #batch-panel h2 {
+      margin: 0 0 30px 0;
+      color: #333;
+      font-size: 24px;
+    }
+    
+    .setting-group {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 6px;
+    }
+    
+    .setting-group h3 {
+      margin: 0 0 20px 0;
+      color: #555;
+      font-size: 16px;
+    }
+    
+    .setting-visual {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+    }
+    
+    /* Visualizzazione griglia */
+    .grid-visual {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .grid-icon {
+      width: 80px;
+      height: 100px;
+      border: 3px solid #333;
+      background: #fff;
+      display: grid;
+      gap: 2px;
+      padding: 4px;
+    }
+    
+    .grid-icon.cols-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid-icon.rows-6 { grid-template-rows: repeat(6, 1fr); }
+    
+    .grid-cell {
+      background: #ddd;
+      border: 1px solid #999;
+    }
+    
+    .grid-inputs {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .input-row label {
+      min-width: 80px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    
+    .input-row input {
+      width: 80px;
+      padding: 8px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      text-align: center;
+    }
+    
+    .input-row input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+    
+	/* Visualizzazione margini */
+	.margins-visual {
+	  position: relative;
+	  width: 120px;
+	  height: 160px;
+	  border: 3px solid #333;
+	  background: #fff;
+	  display: flex;
+	  align-items: center;
+	  justify-content: center;
+	}
+
+	.margins-inner {
+	  width: 70%;
+	  height: 70%;
+	  background: #ddd;
+	  border: 2px dashed #666;
+	}
+
+	.margin-input {
+	  position: absolute;
+	  width: 60px;
+	}
+
+	.margin-input.top { top: -35px; left: 50%; transform: translateX(-50%); }
+	.margin-input.right { right: -35px; top: 50%; transform: translateY(-50%); }
+	.margin-input.bottom { bottom: -35px; left: 50%; transform: translateX(-50%); }
+	.margin-input.left { left: -35px; top: 50%; transform: translateY(-50%); }
+
+	.margin-input input {
+	  width: 100%;
+	  padding: 6px;
+	  border: 2px solid #ddd;
+	  border-radius: 4px;
+	  text-align: center;
+	  font-size: 13px;
+	}
+
+	.margin-input input:focus {
+	  outline: none;
+	  border-color: var(--primary-color);
+	}
+    
+    /* Visualizzazione padding */
+    .padding-visual {
+      display: flex;
+      align-items: center;
+      gap: 25px;
+    }
+    
+    .padding-icon {
+      width: 100px;
+      height: 100px;
+      border: 3px solid #333;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    
+    .padding-outer {
+      width: 100%;
+      height: 100%;
+      background: #e8f0fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .padding-inner {
+      background: #fff;
+      border: 2px dashed #666;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: #999;
+    }
+    
+    /* Azioni settings */
+    .settings-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 2px solid #e0e0e0;
+    }
+    
+    .settings-btn {
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .settings-btn.primary {
+      background: var(--primary-color);
+      color: #fff;
+    }
+    
+    .settings-btn.primary:hover {
+      background: var(--primary-hover);
+    }
+    
+    .settings-btn.secondary {
+      background: #6c757d;
+      color: #fff;
+    }
+    
+    .settings-btn.secondary:hover {
+      background: #5a6268;
+    }
+
+    /* ============================================
+       MODAL FORM
+       ============================================ */
+    #overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.2s;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateY(-20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    #modal-form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      padding: 40px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      min-width: 600px;
+      max-width: 90vw;
+      animation: slideIn 0.3s;
+    }
+    
+    .form-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .form-row label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .form-row input,
+    .form-row textarea {
+      font-family: var(--font-family);
+      font-size: 14px;
+      padding: 10px 12px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      transition: border-color 0.2s;
+    }
+    
+    .form-row input:focus,
+    .form-row textarea:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+    
+    .form-row textarea {
+      min-height: 150px;
+      resize: vertical;
+      font-family: var(--font-family);
+    }
+    
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 10px;
+      justify-content: space-between;
+    }
+    
+    .modal-btn {
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .modal-btn.primary {
+      background: var(--primary-color);
+      color: #fff;
+    }
+    
+    .modal-btn.primary:hover {
+      background: var(--primary-hover);
+    }
+    
+    .modal-btn.secondary {
+      background: #6c757d;
+      color: #fff;
+    }
+    
+    .modal-btn.secondary:hover {
+      background: #5a6268;
+    }
+    
+    .modal-btn.danger {
+      background: var(--danger-color);
+      color: #fff;
+    }
+    
+    .modal-btn.danger:hover {
+      background: var(--danger-hover);
+    }
+
+    /* ============================================
+       MODAL CONFERMA
+       ============================================ */
+    #confirm-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    #confirm-box {
+      background: #fff;
+      border-radius: 8px;
+      padding: 30px;
+      min-width: 400px;
+      max-width: 90vw;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      animation: slideIn 0.3s;
+    }
+    
+    #confirm-msg {
+      font-size: 16px;
+      color: #333;
+      line-height: 1.5;
+      margin-bottom: 24px;
+      white-space: pre-line;
+    }
+    
+    .confirm-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    /* ============================================
+       STAMPA
+       ============================================ */
+	@page {
+	  size: A4;
+	  margin: 0;
+	}
+    
+	@media print {
+	  body {
+		background: #fff !important;
+	  }
+	  
+	  #toolbar,
+	  #overlay,
+	  #settings-overlay,
+	  #batch-overlay,
+	  #confirm-overlay,
+	  .label-dup,
+	  .label-paste,
+	  #clip-toast,
+	  .watermark {
+		display: none !important;
+	  }
+	  
+	  #sheet-container {
+		padding: 0 !important;
+		min-height: 0 !important;
+		display: block !important;
+	  }
+	  
+	  #sheet {
+		box-shadow: none !important;
+		page-break-after: avoid;
+		margin: 0 !important;
+		width: var(--page-width) !important;
+		height: var(--page-height) !important;
+		padding: var(--margin-top) var(--margin-right) var(--margin-bottom) var(--margin-left) !important;
+	  }
+	  
+	  #grid {
+		width: 100% !important;
+		height: 100% !important;
+	  }
+	  
+	  .label {
+		border: none !important;
+		background: none !important;
+		box-shadow: none !important;
+		outline: none !important;
+		cursor: default !important;
+		page-break-inside: avoid;
+	  }
+	  
+	  .label:hover {
+		background: none !important;
+		border-color: transparent !important;
+	  }
+	}
+  </style>
+</head>
+<body>
+  <!-- Barra strumenti fissa -->
+  <div id="toolbar">
+    <div class="toolbar-left">
+      <button id="settings-btn" class="tool-btn settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M12 1v6m0 6v6m9-9h-6M7 12H1m15.4-6.3l-4.2 4.2M9.8 14.1l-4.2 4.2m12.8 0l-4.2-4.2M9.8 9.9L5.6 5.7"></path>
+        </svg>
+        Impostazioni
+      </button>
+      <button id="batch-btn" class="tool-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+        </svg>
+        Batch
+      </button>
+    </div>
+    <span id="app-version" class="app-version"></span>
+    <div class="toolbar-right">
+      <button id="print-btn" class="tool-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 6 2 18 2 18 9"></polyline>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+          <rect x="6" y="14" width="12" height="8"></rect>
+        </svg>
+        Stampa PDF
+      </button>
+      <button id="reset-btn" class="tool-btn danger">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+        Cancella tutto
+      </button>
+    </div>
+  </div>
+
+  <!-- Foglio etichette -->
+	<div id="sheet-container">
+	  <div id="sheet">
+		<div id="grid"></div>
+	  </div>
+	</div>
+
+  <!-- Modal Batch -->
+  <div id="batch-overlay">
+    <div id="batch-panel">
+      <h2>📄 Importa da Excel</h2>
+      <p id="batch-free" style="margin: 0 0 16px; font-size: 15px; font-weight: 600; color: #333;"></p>
+      <div class="batch-frames">
+        <div class="batch-frame" id="frame-single">
+          <h3>Singola riga</h3>
+          <p class="batch-help">Uno o più file (Ctrl o Maiusc + clic), al massimo quante sono le etichette libere. Di ogni file viene letta solo la prima riga sotto le intestazioni; i file vengono inseriti in ordine alfabetico di nome.</p>
+          <input type="file" id="batch-file" accept=".xlsx,.xls,.csv" multiple>
+          <p id="batch-sel" class="batch-msg"></p>
+        </div>
+        <div class="batch-frame" id="frame-multi">
+          <h3>Multiriga</h3>
+          <p class="batch-help">Un solo file: un'etichetta per ogni riga dell'intervallo, al massimo quante sono le etichette libere. Numeri di riga come in Excel (la riga 1 contiene le intestazioni).</p>
+          <input type="file" id="batch-file-multi" accept=".xlsx,.xls,.csv">
+          <p id="batch-range-info" class="batch-msg" style="font-weight: normal;"></p>
+          <div class="batch-range-row">
+            <label>Dalla riga <input type="number" id="batch-from" min="1" step="1" disabled></label>
+            <label>Alla riga <input type="number" id="batch-to" min="1" step="1" disabled></label>
+          </div>
+          <p id="batch-sel-multi" class="batch-msg"></p>
+        </div>
+      </div>
+      <div class="setting-group">
+        <h3>Opzioni</h3>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 30px;">
+          <label class="batch-opt" title="Se spuntato, il campo Città/Data resta vuoto">
+            <input type="checkbox" id="batch-no-date" checked> Senza data
+          </label>
+          <label class="batch-opt" title="Le etichette dopo questo numero sono considerate già usate sul foglio">
+            Inizia dall'etichetta n.
+            <input type="number" id="batch-start" min="1" step="1" style="width: 60px; padding: 4px 6px; font-size: 14px;">
+          </label>
+        </div>
+        <p id="batch-start-info" style="margin: 8px 0 0; font-size: 12px; color: #666;"></p>
+      </div>
+      <div class="settings-actions">
+        <button id="batch-cancel" class="settings-btn secondary">Annulla</button>
+        <button id="batch-apply" class="settings-btn primary">Importa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Impostazioni -->
+  <div id="settings-overlay">
+    <div id="settings-panel">
+      <h2>⚙️ Impostazioni Layout</h2>
+      
+      <!-- Griglia -->
+      <div class="setting-group">
+        <h3>📐 Griglia Etichette</h3>
+        <div class="setting-visual">
+          <div id="grid-preview" class="grid-icon cols-2 rows-6"></div>
+          <div class="grid-inputs">
+            <div class="input-row">
+              <label>Colonne:</label>
+              <input type="number" id="input-cols" min="1" max="10" value="2">
+            </div>
+            <div class="input-row">
+              <label>Righe:</label>
+              <input type="number" id="input-rows" min="1" max="20" value="6">
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Margini -->
+      <div class="setting-group">
+        <h3>📏 Margini Foglio (mm)</h3>
+        <div class="setting-visual" style="justify-content: center; position: relative; height: 240px; width: 200px; margin: 0 auto;">
+          <div class="margins-visual">
+            <div class="margins-inner"></div>
+          </div>
+          <div class="margin-input top">        
+            <input type="number" id="input-margin-top" min="0" max="50" step="0.5" value="5">
+          </div>
+          <div class="margin-input right">
+            <input type="number" id="input-margin-right" min="0" max="50" step="0.5" value="8">
+          </div>
+          <div class="margin-input bottom">
+            <input type="number" id="input-margin-bottom" min="0" max="50" step="0.5" value="5">
+          </div>
+          <div class="margin-input left">
+            <input type="number" id="input-margin-left" min="0" max="50" step="0.5" value="8">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Padding -->
+      <div class="setting-group">
+        <h3>📦 Padding Celle (mm)</h3>
+        <div class="setting-visual padding-visual">
+          <div class="padding-icon">
+            <div class="padding-outer">
+              <div id="padding-preview" class="padding-inner">Contenuto</div>
+            </div>
+          </div>
+          <div class="input-row">
+            <label>Padding:</label>
+            <input type="number" id="input-padding" min="0" max="20" step="0.5" value="2">
+          </div>
+        </div>
+      </div>
+      
+      <div class="settings-actions">
+        <button id="settings-cancel" class="settings-btn secondary">Annulla</button>
+        <button id="settings-apply" class="settings-btn primary">Applica Modifiche</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal inserimento/modifica -->
+  <div id="overlay">
+    <form id="modal-form" autocomplete="off">
+      <h2 style="margin: 0 0 10px 0; color: #333;">Modifica Etichetta</h2>
+      
+      <div class="form-row">
+        <label for="annotazione">Annotazione:</label>
+        <textarea id="annotazione" maxlength="800"></textarea>
+      </div>
+      
+      <div class="form-row">
+        <label for="city-date">Città/Data:</label>
+        <input type="text" id="city-date" maxlength="80">
+      </div>
+      
+      <div class="form-row">
+        <label for="num-atto">Numero atto:</label>
+        <input type="text" id="num-atto" maxlength="50">
+      </div>
+      
+      <div class="modal-actions">
+        <button type="button" id="delete-btn" class="modal-btn danger">Cancella</button>
+        <div style="display: flex; gap: 12px;">
+          <button type="button" id="cancel-btn" class="modal-btn secondary">Annulla</button>
+          <button type="submit" class="modal-btn primary">Salva</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Avviso copia in corso -->
+  <div id="clip-toast">
+    <span>Annotazione copiata: clicca su una cella vuota per incollarla.</span>
+    <button type="button" id="clip-cancel">Annulla (Esc)</button>
+  </div>
+
+  <!-- Modal conferma -->
+  <div id="confirm-overlay">
+    <div id="confirm-box">
+      <div id="confirm-msg"></div>
+      <div class="confirm-actions">
+        <button id="cf-cancel" class="modal-btn secondary">Annulla</button>
+        <button id="cf-ok" class="modal-btn primary">Conferma</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+    // ============================================
+    // CONFIGURAZIONE
+    // ============================================
+    const APP_VERSION = '1.8';
+
+    const CONFIG = {
+      cols: 2,
+      rows: 6,
+      marginTop: 5,
+      marginRight: 8,
+      marginBottom: 5,
+      marginLeft: 8,
+      cellPadding: 2,
+      defaultCity: 'Viterbo',
+      annoDoppiaCopia: 2018   // atti da quest'anno in poi: registri in doppia copia
+    };
+
+    // ============================================
+    // UTILITY FUNCTIONS
+    // ============================================
+    function getDataOggi() {
+      const d = new Date();
+      return ("0" + d.getDate()).slice(-2) + '-' + 
+             ("0" + (d.getMonth() + 1)).slice(-2) + '-' + 
+             d.getFullYear();
+    }
+
+    function wrapCodici(text) {
+      if (!text) return "";
+      return text.replace(/\b(\d{2,}-)+\d{2,}\b/g, match => {
+        return `<span class="nowrap">${match}</span>`;
+      });
+    }
+
+    function showConfirm(msg, callback, opts = {}) {
+      const overlay = document.getElementById('confirm-overlay');
+      const msgEl = document.getElementById('confirm-msg');
+      const btnCancel = document.getElementById('cf-cancel');
+      const btnOk = document.getElementById('cf-ok');
+      
+      msgEl.textContent = msg;
+      btnOk.textContent = opts.okText || 'Conferma';
+      btnCancel.textContent = opts.cancelText || 'Annulla';
+      overlay.style.display = 'flex';
+      
+      setTimeout(() => btnCancel.focus(), 100);
+      
+      const cleanup = () => {
+        overlay.style.display = 'none';
+        btnCancel.onclick = null;
+        btnOk.onclick = null;
+      };
+      
+      btnCancel.onclick = () => { cleanup(); callback(false); };
+      btnOk.onclick = () => { cleanup(); callback(true); };
+    }
+
+    // ============================================
+    // DOPPIA COPIA (registri dal 2018)
+    // ============================================
+    // Ricava l'anno dell'atto dal campo "atto". Restituisce un numero o null.
+    // Formati riconosciuti: "2019 1A n. 5", "anno 2019, parte 1...", "2019".
+    // Se il campo è "n.prot - atto" (etichette importate) viene letta solo la parte atto.
+    // I codici ANSC (AAAA-NNNNNNN-NN-NNNNNN) sono esclusi: non hanno registro cartaceo.
+    function annoAtto(atto) {
+      if (!atto) return null;
+      let s = String(atto);
+      if (s.includes(' - ')) s = s.split(' - ').pop();
+      s = s.replace(/\b\d{4}-\d{7}-\d{2}-\d{6}\b/g, ' ');
+      const maxAnno = new Date().getFullYear() + 1;
+      const ok = y => (y >= 1800 && y <= maxAnno) ? y : null;
+      let m = s.match(/\banno\s*(\d{4})\b/i);              // "anno 2019"
+      if (m) return ok(+m[1]);
+      m = s.match(/^\s*(\d{4})\b/);                         // anno all'inizio: "2019 1A n. 5"
+      if (m) return ok(+m[1]);
+      m = s.match(/\b(\d{4})\s+\d+\s*[A-Za-z]/);             // "... 2019 1A ..."
+      if (m) return ok(+m[1]);
+      return null;
+    }
+
+    function richiedeDoppiaCopia(atto) {
+      const a = annoAtto(atto);
+      return a !== null && a >= CONFIG.annoDoppiaCopia;
+    }
+
+    function applyConfig() {
+      const root = document.documentElement;
+      root.style.setProperty('--grid-cols', CONFIG.cols);
+      root.style.setProperty('--grid-rows', CONFIG.rows);
+      root.style.setProperty('--margin-top', CONFIG.marginTop + 'mm');
+      root.style.setProperty('--margin-right', CONFIG.marginRight + 'mm');
+      root.style.setProperty('--margin-bottom', CONFIG.marginBottom + 'mm');
+      root.style.setProperty('--margin-left', CONFIG.marginLeft + 'mm');
+      root.style.setProperty('--cell-padding', CONFIG.cellPadding + 'mm');
+    }
+
+    // ============================================
+    // DATA MANAGEMENT
+    // ============================================
+    let labels = [];
+    let currentIdx = null;
+    let dragSourceIdx = null;
+    let copiaIdx = null;   // etichetta copiata in attesa di essere incollata
+
+    function initLabels() {
+      const total = CONFIG.cols * CONFIG.rows;
+      labels = Array(total).fill().map(() => ({
+        nota: '',
+        cityDate: '',
+        atto: ''
+      }));
+    }
+
+    // ============================================
+    // DOM CREATION
+    // ============================================
+    function createLabels() {
+      const grid = document.getElementById('grid');
+      grid.innerHTML = '';
+      
+      const total = CONFIG.cols * CONFIG.rows;
+      
+      for (let i = 0; i < total; i++) {
+        const label = document.createElement('div');
+        label.className = 'label';
+        label.dataset.idx = i;
+        label.dataset.filled = 'false';
+        
+        label.innerHTML = `
+          <div class="label-main"></div>
+          <div class="label-atto"></div>
+          <div class="label-dup">DOPPIA COPIA<button type="button" class="dup-copy" title="Copia per la doppia copia"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button></div>
+          <div class="label-paste" title="Incolla qui la copia"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1"></rect></svg>Incolla qui</div>
+          <div class="watermark">${i + 1}</div>
+        `;
+        
+        label.addEventListener('click', (e) => {
+          if (!label.classList.contains('dragging')) {
+            openModal(i);
+          }
+        });
+
+        label.querySelector('.dup-copy').addEventListener('click', (e) => {
+          e.stopPropagation();
+          copiaEtichetta(i);
+        });
+
+        label.querySelector('.label-paste').addEventListener('click', (e) => {
+          e.stopPropagation();
+          incollaEtichetta(i);
+        });
+        
+        setupDragAndDrop(label, i);
+        grid.appendChild(label);
+      }
+      
+      // Aggiorna tutte le etichette con dati esistenti
+      labels.forEach((_, idx) => updateLabel(idx));
+    }
+
+    // ============================================
+    // DRAG & DROP FUNCTIONS
+    // ============================================
+    function setupDragAndDrop(label, idx) {
+      label.setAttribute('draggable', 'false');
+      
+      label.addEventListener('dragstart', (e) => {
+        const isFilled = label.dataset.filled === 'true';
+        if (!isFilled) {
+          e.preventDefault();
+          return;
+        }
+        
+        dragSourceIdx = idx;
+        label.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', label.innerHTML);
+      });
+      
+      label.addEventListener('dragend', (e) => {
+        label.classList.remove('dragging');
+        document.querySelectorAll('.label').forEach(l => l.classList.remove('drag-over'));
+      });
+      
+      label.addEventListener('dragover', (e) => {
+        if (dragSourceIdx === null || dragSourceIdx === idx) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        label.classList.add('drag-over');
+      });
+      
+      label.addEventListener('dragleave', (e) => {
+        label.classList.remove('drag-over');
+      });
+      
+      label.addEventListener('drop', (e) => {
+        e.preventDefault();
+        label.classList.remove('drag-over');
+        
+        if (dragSourceIdx === null || dragSourceIdx === idx) return;
+        
+        const targetIdx = idx;
+        const targetFilled = labels[targetIdx].nota || labels[targetIdx].cityDate || labels[targetIdx].atto;
+        
+        if (targetFilled) {
+          showConfirm(
+            `La cella ${targetIdx + 1} contiene già dei dati.\n\nVuoi sovrascriverli spostando qui il contenuto della cella ${dragSourceIdx + 1}?`,
+            (ok) => {
+              if (ok) {
+                performMove(dragSourceIdx, targetIdx);
+              }
+              dragSourceIdx = null;
+            }
+          );
+        } else {
+          performMove(dragSourceIdx, targetIdx);
+          dragSourceIdx = null;
+        }
+      });
+    }
+    
+    // ============================================
+    // COPIA / INCOLLA (doppia copia)
+    // ============================================
+    function copiaEtichetta(idx) {
+      if (copiaIdx === idx) { annullaCopia(); return; }   // secondo clic = annulla
+      const prev = copiaIdx;
+      copiaIdx = idx;
+      document.body.classList.add('clip-active');
+      if (prev !== null) updateLabel(prev);
+      updateLabel(idx);
+      if (!freeSlots().length) {
+        alert('Nessuna cella vuota disponibile: stampa il foglio e incolla la copia su un foglio nuovo.');
+        annullaCopia();
+      }
+    }
+
+    function annullaCopia() {
+      const prev = copiaIdx;
+      copiaIdx = null;
+      document.body.classList.remove('clip-active');
+      if (prev !== null && prev < labels.length) updateLabel(prev);
+    }
+
+    function incollaEtichetta(idx) {
+      if (copiaIdx === null) return;
+      const src = copiaIdx;
+      const l = labels[idx];
+      if (l.nota || l.cityDate || l.atto) return;   // solo su celle vuote
+      labels[src] = { ...labels[src], dupFatto: true };
+      labels[idx] = { ...labels[src] };
+      annullaCopia();
+      updateLabel(src);
+      updateLabel(idx);
+    }
+
+    function performMove(fromIdx, toIdx) {
+      annullaCopia();
+      labels[toIdx] = { ...labels[fromIdx] };
+      labels[fromIdx] = { nota: '', cityDate: '', atto: '' };
+      updateLabel(fromIdx);
+      updateLabel(toIdx);
+    }
+    
+    function updateDraggableState(idx) {
+      const label = document.querySelector(`.label[data-idx="${idx}"]`);
+      if (!label) return;
+      const isFilled = label.dataset.filled === 'true';
+      label.setAttribute('draggable', isFilled ? 'true' : 'false');
+    }
+
+    // ============================================
+    // UPDATE FUNCTIONS
+    // ============================================
+    function updateLabel(idx) {
+      if (idx >= labels.length) return;
+      
+      const data = labels[idx];
+      const label = document.querySelector(`.label[data-idx="${idx}"]`);
+      if (!label) return;
+      
+      const mainEl = label.querySelector('.label-main');
+      const attoEl = label.querySelector('.label-atto');
+      
+      let mainContent = '';
+	  if (data.nota) {
+        let nota = data.nota.trim();
+        if (nota && !nota.endsWith('.')) {
+          nota += '.';
+        }
+        mainContent += wrapCodici(nota);
+      }
+		
+      if (data.cityDate) {
+        if (mainContent) mainContent += '\n';
+        mainContent += data.cityDate;
+      }
+      
+      mainEl.innerHTML = mainContent;
+      attoEl.textContent = data.atto;
+      
+      const isFilled = !!(data.nota || data.cityDate || data.atto);
+      label.dataset.filled = isFilled;
+      label.dataset.dup = richiedeDoppiaCopia(data.atto) && !data.dupFatto;
+      label.classList.toggle('copy-source', idx === copiaIdx);
+      updateDraggableState(idx);
+    }
+
+    // ============================================
+    // OVERFLOW CHECK FUNCTION
+    // ============================================
+    function checkOverflow(idx, nota, cityDate, atto) {
+      const testLabel = document.createElement('div');
+      testLabel.className = 'label';
+      testLabel.style.position = 'absolute';
+      testLabel.style.visibility = 'hidden';
+      testLabel.style.pointerEvents = 'none';
+      
+      const realLabel = document.querySelector('.label');
+      const computedStyle = window.getComputedStyle(realLabel);
+      testLabel.style.width = computedStyle.width;
+      testLabel.style.height = computedStyle.height;
+      testLabel.style.padding = computedStyle.padding;
+      
+      testLabel.innerHTML = `
+        <div class="label-main"></div>
+        <div class="label-atto"></div>
+      `;
+      
+      document.body.appendChild(testLabel);
+      
+      const mainEl = testLabel.querySelector('.label-main');
+      const attoEl = testLabel.querySelector('.label-atto');
+      
+      let mainContent = '';
+	  if (nota) {
+	    mainContent += wrapCodici(nota);
+	  }
+	  
+      if (cityDate) {
+        if (mainContent) mainContent += '\n';
+        mainContent += cityDate;
+      }
+      
+      mainEl.innerHTML = mainContent;
+      attoEl.textContent = atto;
+      
+      const mainOverflow = mainEl.scrollHeight > mainEl.clientHeight;
+      const attoOverflow = attoEl.scrollWidth > attoEl.clientWidth;
+      
+      document.body.removeChild(testLabel);
+      
+      return {
+        hasOverflow: mainOverflow || attoOverflow,
+        mainOverflow,
+        attoOverflow
+      };
+    }
+
+    // ============================================
+    // MODAL FUNCTIONS
+    // ============================================
+    function openModal(idx) {
+      currentIdx = idx;
+      const data = labels[idx];
+      
+      document.getElementById('annotazione').value = data.nota;
+      document.getElementById('city-date').value = data.cityDate || `${CONFIG.defaultCity}, ${getDataOggi()}`;
+      document.getElementById('num-atto').value = data.atto;
+      
+      document.getElementById('overlay').style.display = 'flex';
+      setTimeout(() => document.getElementById('annotazione').focus(), 100);
+    }
+
+    function closeModal() {
+      document.getElementById('overlay').style.display = 'none';
+      currentIdx = null;
+    }
+
+    function saveLabel() {
+      if (currentIdx === null) return;
+      
+      const nota = document.getElementById('annotazione').value.trim();
+      const cityDate = document.getElementById('city-date').value.trim();
+      const atto = document.getElementById('num-atto').value.trim();
+      
+      const overflowCheck = checkOverflow(currentIdx, nota, cityDate, atto);
+      
+      if (overflowCheck.hasOverflow) {
+        let errorMsg = '⚠️ ERRORE: Il contenuto supera lo spazio disponibile!\n\n';
+        if (overflowCheck.mainOverflow) {
+          errorMsg += '• Il testo dell\'annotazione e/o città/data è troppo lungo\n';
+        }
+        if (overflowCheck.attoOverflow) {
+          errorMsg += '• Il numero atto è troppo lungo\n';
+        }
+        errorMsg += '\nRiduci il testo e riprova.';
+        
+        alert(errorMsg);
+        return;
+      }
+      
+      const empty = [];
+      if (!nota) empty.push('Annotazione');
+      if (!cityDate) empty.push('Città/Data');
+      if (!atto) empty.push('Numero atto');
+      
+      // Se testo e atto non cambiano, resta valida l'eventuale duplicazione già fatta
+      const prima = labels[currentIdx];
+      const dupFatto = !!prima.dupFatto && prima.nota === nota && prima.atto === atto;
+
+      const salva = () => {
+        if (currentIdx === copiaIdx) annullaCopia();
+        labels[currentIdx] = { nota, cityDate, atto, dupFatto };
+        updateLabel(currentIdx);
+        closeModal();
+      };
+
+      // Dopo l'eventuale conferma sui campi vuoti: avviso doppia copia
+      const verificaDoppiaCopia = () => {
+        if (!richiedeDoppiaCopia(atto) || dupFatto) { salva(); return; }
+        const anno = annoAtto(atto);
+        const msg = `⚠️ ATTENZIONE – DOPPIA COPIA\n\n`
+          + `L'atto è dell'anno ${anno}: i registri dal ${CONFIG.annoDoppiaCopia} sono ancora in archivio in doppia copia.\n\n`
+          + `L'annotazione deve essere DUPLICATA dall'operatore anche sul secondo originale.\n\n`
+          + `Dopo il salvataggio usa l'icona Copia sul bollino giallo e incollala in una cella vuota.`;
+        showConfirm(msg, ok => { if (ok) salva(); },
+          { okText: 'Ho capito, salva', cancelText: 'Torna alla modifica' });
+      };
+
+      if (empty.length > 0) {
+        const msg = `I seguenti campi sono vuoti:\n${empty.join(', ')}\n\nProcedere comunque?`;
+        showConfirm(msg, ok => { if (ok) verificaDoppiaCopia(); });
+      } else {
+        verificaDoppiaCopia();
+      }
+    }
+
+    function deleteLabel() {
+      if (currentIdx === null) return;
+      
+      showConfirm('Vuoi cancellare il contenuto di questa etichetta?', ok => {
+        if (ok) {
+          if (currentIdx === copiaIdx) annullaCopia();
+          labels[currentIdx] = { nota: '', cityDate: '', atto: '' };
+          updateLabel(currentIdx);
+          closeModal();
+        }
+      });
+    }
+
+    function resetAll() {
+      showConfirm('Sei sicuro di voler cancellare TUTTE le etichette?', ok => {
+        if (ok) {
+          annullaCopia();
+          labels.forEach((_, i) => {
+            labels[i] = { nota: '', cityDate: '', atto: '' };
+            updateLabel(i);
+          });
+        }
+      });
+    }
+
+    // ============================================
+    // BATCH DA EXCEL
+    // ============================================
+    function normKey(k) {
+      return String(k).toLowerCase().replace(/\s+/g, ' ').trim();
+    }
+
+    // Indici delle etichette ancora vuote
+    function freeSlots() {
+      const free = [];
+      labels.forEach((l, i) => { if (!l.nota && !l.cityDate && !l.atto) free.push(i); });
+      return free;
+    }
+
+    // Numero dell'etichetta da cui partire (1..totale); vuoto o non valido = l'ultima
+    function batchStart() {
+      const v = parseInt(document.getElementById('batch-start').value, 10);
+      if (!v) return labels.length;
+      return Math.min(Math.max(v, 1), labels.length);
+    }
+
+    // Valore scritto in "Inizia dall'etichetta" se valido (1..totale), altrimenti null
+    function startRaw() {
+      const v = document.getElementById('batch-start').value.trim();
+      if (!/^\d+$/.test(v)) return null;
+      const n = parseInt(v, 10);
+      return (n >= 1 && n <= labels.length) ? n : null;
+    }
+
+    // Numero di partenza minimo per avere almeno "need" etichette libere (null se non basta il foglio)
+    function minStartFor(need) {
+      const free = freeSlots();
+      for (let st = 1; st <= labels.length; st++) {
+        if (free.filter(i => i < st).length >= need) return st;
+      }
+      return null;
+    }
+
+    // Etichette libere usate dal batch: dalla n. di partenza all'indietro fino alla 1
+    function batchSlots() {
+      const start = batchStart();
+      return freeSlots().filter(i => i < start).reverse();
+    }
+
+    function etichette(n) { return n === 1 ? '1 etichetta' : `${n} etichette`; }
+
+    // Riquadro in uso: 'single' | 'multi' | null (nessuno scelto ancora)
+    let batchActive = null;
+
+    function batchMode() { return batchActive; }
+
+    function setBatchMsg(el, text, err) {
+      el.textContent = text;
+      el.style.color = err ? '#c0392b' : '#333';
+    }
+
+    // File letto in modalità multiriga: { file, rows (solo righe con dati), first, last }
+    let multiData = null;
+    let multiToken = 0;   // evita che una lettura vecchia sovrascriva quella nuova
+
+    // Intervallo scelto, limitato alle righe con dati del file.
+    // Restituisce { span: righe nell'intervallo, rows: righe con dati } oppure null se non valido.
+    function multiRowsInRange() {
+      if (!multiData) return { span: 0, rows: [] };
+      const from = parseInt(document.getElementById('batch-from').value, 10);
+      const to = parseInt(document.getElementById('batch-to').value, 10);
+      if (!from || !to || from > to) return null;
+      const a = Math.max(from, multiData.first);
+      const b = Math.min(to, multiData.last);
+      if (a > b) return { span: 0, rows: [] };
+      return { span: b - a + 1, a, b, rows: multiData.rows.filter(r => r.riga >= a && r.riga <= b) };
+    }
+
+    function restano(n) {
+      if (!n) return 'Dopo l\'importazione non resteranno etichette libere.';
+      return n === 1 ? 'Dopo l\'importazione resterà 1 etichetta libera.' : `Dopo l'importazione resteranno ${n} etichette libere.`;
+    }
+
+    function righe(n) { return n === 1 ? '1 riga' : `${n} righe`; }
+
+    // Attiva un riquadro e disattiva l'altro
+    function setBatchActive(mode) {
+      batchActive = mode;
+      ['single', 'multi'].forEach(m => {
+        const frame = document.getElementById('frame-' + m);
+        const off = mode !== null && m !== mode;
+        frame.classList.toggle('active', m === mode);
+        frame.classList.toggle('inactive', off);
+        frame.title = off ? 'Clicca per usare questa modalità' : '';
+      });
+      document.getElementById('batch-file').disabled = mode === 'multi';
+      document.getElementById('batch-file-multi').disabled = mode === 'single';
+      const rangeOn = !!multiData && mode !== 'single';
+      document.getElementById('batch-from').disabled = !rangeOn;
+      document.getElementById('batch-to').disabled = !rangeOn;
+      updateBatchInfo();
+    }
+
+    // Aggiorna nel pannello le etichette libere e i messaggi dei due riquadri.
+    // Controllo incrociato: le righe/i file scelti non possono superare le etichette
+    // libere dalla n. di partenza alla n. 1, altrimenti uscirebbero dal foglio.
+    function updateBatchInfo() {
+      const startOk = startRaw() !== null;
+      const start = batchStart();
+      const free = batchSlots().length;
+      const liberi = free === 1 ? "c'è solo 1 etichetta libera" : `ci sono solo ${free} etichette libere`;
+
+      document.getElementById('batch-free').textContent =
+        `Etichette libere dalla n. ${start} alla n. 1: ${free}`;
+      const startInfo = document.getElementById('batch-start-info');
+      if (!startOk) {
+        setBatchMsg(startInfo, `"Inizia dall'etichetta" deve essere un numero da 1 a ${labels.length}.`, true);
+      } else {
+        setBatchMsg(startInfo,
+          `Le etichette vengono inserite all'indietro: ${start}`
+          + (start > 1 ? `, ${start - 1}` : '') + (start > 2 ? `, ${start - 2}…` : '')
+          + (start < labels.length ? ` (dalla ${start + 1} alla ${labels.length} considerate già usate).` : (start > 2 ? '' : '.'))
+          + ` Quelle già compilate vengono saltate.`);
+        startInfo.style.color = '#666';
+      }
+
+      // Singola riga
+      let singleErr = false;
+      const sel = document.getElementById('batch-sel');
+      const n = document.getElementById('batch-file').files.length;
+      if (!n) {
+        setBatchMsg(sel, '');
+      } else if (n > free) {
+        singleErr = true;
+        const ms = minStartFor(n);
+        const rimedi = [];
+        if (ms) rimedi.push(`porta "Inizia dall'etichetta" almeno a ${ms}`);
+        if (free) rimedi.push(`seleziona al massimo ${free} file`);
+        setBatchMsg(sel, `Selezionati ${n} file, ma dalla n. ${start} alla n. 1 ${liberi}.`
+          + (rimedi.length ? ` Correggi: ${rimedi.join(' oppure ')}.` : ''), true);
+      } else {
+        setBatchMsg(sel, `Selezionati ${n} file. ${restano(free - n)}`);
+      }
+
+      // Multiriga
+      let rangeErr = false;   // "Dalla riga" > "Alla riga"
+      let spanErr = false;    // troppe righe per le etichette libere
+      let emptyErr = false;   // nessuna riga con dati
+      const selM = document.getElementById('batch-sel-multi');
+      if (!multiData) {
+        setBatchMsg(selM, '');
+      } else {
+        const r = multiRowsInRange();
+        if (r === null) {
+          rangeErr = true;
+          setBatchMsg(selM, 'Intervallo non valido: "Dalla riga" deve essere minore o uguale ad "Alla riga".', true);
+        } else if (r.span > free) {
+          spanErr = true;
+          const ms = minStartFor(r.span);
+          const rimedi = [];
+          if (free) rimedi.push(`porta "Alla riga" a ${r.a + free - 1}`);
+          if (ms) rimedi.push(`porta "Inizia dall'etichetta" almeno a ${ms}`);
+          setBatchMsg(selM, `L'intervallo dalla riga ${r.a} alla ${r.b} comprende ${righe(r.span)}, ma dalla n. ${start} alla n. 1 ${liberi}.`
+            + (rimedi.length ? ` Correggi: ${rimedi.join(' oppure ')}.` : ' Stampa il foglio e libera delle etichette.'), true);
+        } else if (!r.rows.length) {
+          emptyErr = true;
+          setBatchMsg(selM, 'Nessuna riga con dati nell\'intervallo scelto.', true);
+        } else {
+          const vuote = r.span - r.rows.length;
+          setBatchMsg(selM, `Verranno create ${etichette(r.rows.length)}`
+            + (vuote ? ` (saltate ${righe(vuote)} senza dati)` : '')
+            + `. ${restano(free - r.rows.length)}`);
+        }
+      }
+
+      // Evidenzia i campi in conflitto (solo per il riquadro in uso, o per entrambi se nessuno è scelto)
+      const checkSingle = batchActive !== 'multi';
+      const checkMulti = batchActive !== 'single';
+      document.getElementById('batch-start').classList.toggle('batch-invalid',
+        !startOk || (checkSingle && singleErr) || (checkMulti && spanErr));
+      document.getElementById('batch-from').classList.toggle('batch-invalid', checkMulti && rangeErr);
+      document.getElementById('batch-to').classList.toggle('batch-invalid', checkMulti && (rangeErr || spanErr));
+
+      // Importa disattivato finché c'è un conflitto nel riquadro in uso
+      document.getElementById('batch-apply').disabled = !startOk
+        || (batchActive === 'single' && singleErr)
+        || (batchActive === 'multi' && (rangeErr || spanErr || emptyErr));
+    }
+
+    function resetRange(text, err) {
+      const from = document.getElementById('batch-from');
+      const to = document.getElementById('batch-to');
+      from.value = ''; to.value = '';
+      from.disabled = true; to.disabled = true;
+      setBatchMsg(document.getElementById('batch-range-info'), text, err);
+    }
+
+    function openBatch() {
+      if (!freeSlots().length) {
+        alert(`Nessuna etichetta libera (0 su ${labels.length}).\nStampa il foglio e usa "Cancella tutto" prima di importare altri file.`);
+        return;
+      }
+      const startEl = document.getElementById('batch-start');
+      startEl.max = labels.length;
+      startEl.value = labels.length;
+      document.getElementById('batch-file').value = '';
+      document.getElementById('batch-file-multi').value = '';
+      multiData = null;
+      multiToken++;
+      resetRange('Seleziona un file per vedere le righe disponibili.');
+      setBatchActive(null);
+      document.getElementById('batch-overlay').style.display = 'flex';
+    }
+
+    function closeBatch() {
+      document.getElementById('batch-overlay').style.display = 'none';
+    }
+
+    // Legge il primo foglio di un file e restituisce tutte le righe dati, oppure un errore.
+    // Ogni riga: { riga (numero Excel), atto ("n.prot - atto"), nota, attoExcel, vuota }
+    function readSheet(file) {
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          try {
+            const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+            const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '', raw: false });
+            if (!raw.length) { resolve({ error: 'il file non contiene righe' }); return; }
+            const keys = Object.keys(raw[0]);
+            const kAtto = keys.find(k => normKey(k) === 'atto');
+            const kTesto = keys.find(k => normKey(k) === 'testo annot.');
+            const kProt = keys.find(k => normKey(k) === 'n.prot');   // facoltativa
+            if (!kAtto || !kTesto) {
+              resolve({ error: 'colonne "atto" e "testo annot." non trovate (presenti: ' + keys.join(', ') + ')' });
+              return;
+            }
+            const rows = raw.map((r, i) => {
+              const atto = String(r[kAtto]).trim();
+              const nota = String(r[kTesto]).trim();
+              // Campo in basso a destra: "n.prot - atto" (solo il valore presente se l'altro manca)
+              const prot = kProt ? String(r[kProt]).trim() : '';
+              return {
+                riga: r.__rowNum__ !== undefined ? r.__rowNum__ + 1 : i + 2,
+                atto: [prot, atto].filter(Boolean).join(' - '),
+                nota,
+                attoExcel: atto,
+                vuota: !atto && !nota
+              };
+            });
+            resolve({ rows });
+          } catch (err) {
+            resolve({ error: 'impossibile leggere il file (' + err.message + ')' });
+          }
+        };
+        reader.onerror = () => resolve({ error: 'impossibile leggere il file' });
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    // Modalità singola riga: di ogni file solo la prima riga dati
+    async function readBatchFile(file) {
+      const res = await readSheet(file);
+      if (res.error) return { file, error: res.error };
+      const first = res.rows[0];
+      if (first.vuota) return { file, error: 'la prima riga non contiene "atto" né "testo annot."' };
+      return { file, item: first, extraRows: res.rows.length - 1 };
+    }
+
+    // Modalità multiriga: legge il file scelto e propone l'intervallo
+    async function loadMultiFile() {
+      multiData = null;
+      const token = ++multiToken;
+      const file = document.getElementById('batch-file-multi').files[0];
+      if (!file) { resetRange('Seleziona un file per vedere le righe disponibili.'); updateBatchInfo(); return; }
+      resetRange('Lettura del file…');
+      updateBatchInfo();
+      const res = await readSheet(file);
+      if (token !== multiToken) return;   // nel frattempo è cambiato file o modalità
+      if (res.error) { resetRange(`${file.name}: ${res.error}`, true); updateBatchInfo(); return; }
+      const rows = res.rows.filter(r => !r.vuota);
+      if (!rows.length) { resetRange(`${file.name}: nessuna riga con "atto" o "testo annot."`, true); updateBatchInfo(); return; }
+
+      const firstRiga = rows[0].riga;
+      const lastRiga = rows[rows.length - 1].riga;
+      multiData = { file, rows, first: firstRiga, last: lastRiga };
+      const free = batchSlots().length;
+      const from = document.getElementById('batch-from');
+      const to = document.getElementById('batch-to');
+      from.disabled = batchActive === 'single'; to.disabled = batchActive === 'single';
+      from.value = firstRiga;
+      // Proposta: tante righe quante sono le etichette libere (es. 12 libere: dalla 2 alla 13)
+      to.value = Math.min(lastRiga, firstRiga + free - 1);
+      setBatchMsg(document.getElementById('batch-range-info'),
+        `Righe con dati in "${file.name}": dalla ${firstRiga} alla ${lastRiga} (${righe(rows.length)}).`);
+      updateBatchInfo();
+    }
+
+    // Modalità singola riga: importa la prima riga di ogni file
+    async function importBatch(fileList) {
+      const files = Array.from(fileList)
+        .sort((a, b) => a.name.localeCompare(b.name, 'it', { numeric: true, sensitivity: 'base' }));
+      const multi = files.length > 1;
+      const results = await Promise.all(files.map(readBatchFile));
+
+      // Unisce le righe di tutti i file, ricordando da quale file arriva ciascuna
+      const errors = [];
+      const ignored = [];   // file con righe in più dopo la prima (ignorate)
+      const all = [];
+      results.forEach(res => {
+        if (res.error) { errors.push(`${res.file.name}: ${res.error}`); return; }
+        all.push({ ...res.item, ref: res.file.name });
+        if (res.extraRows > 0) ignored.push(`${res.file.name}: ignorate ${res.extraRows} righe dopo la prima`);
+      });
+
+      if (!all.length) {
+        let msg = 'Nessuna etichetta importata.';
+        msg += `\nPuoi caricare ancora ${etichette(batchSlots().length)} dalla n. ${batchStart()} alla n. 1.`;
+        if (errors.length) msg += '\n\nFile non letti:\n' + errors.join('\n');
+        alert(msg);
+        return;
+      }
+
+      await insertItems(all, {
+        origine: multi ? ` da ${files.length} file.` : '.',
+        nonInseriti: n => `${n} file non inseriti`,
+        ignored, errors
+      });
+    }
+
+    // Modalità multiriga: importa le righe con dati dell'intervallo scelto
+    async function importMulti() {
+      const rows = multiRowsInRange().rows;
+      const from = document.getElementById('batch-from').value;
+      const to = document.getElementById('batch-to').value;
+      const items = rows.map(r => ({ ...r, ref: `riga ${r.riga}` }));
+      await insertItems(items, {
+        origine: ` dal file "${multiData.file.name}" (righe ${from}–${to}).`,
+        nonInseriti: n => `${righe(n)} non inserite`,
+        ignored: [], errors: []
+      });
+    }
+
+    // Inserisce gli elementi nelle etichette libere (comune alle due modalità)
+    async function insertItems(all, opt) {
+      // Avviso doppia copia PRIMA di importare (Annulla = non importa nulla)
+      const dup = all.filter(it => richiedeDoppiaCopia(it.attoExcel));
+      if (dup.length) {
+        const elenco = dup.map(it => `• ${it.ref}  →  ${it.attoExcel}`).join('\n');
+        const msg = `⚠️ ATTENZIONE – DOPPIA COPIA\n\n`
+          + (dup.length === 1
+              ? `1 annotazione riguarda un atto dal ${CONFIG.annoDoppiaCopia} in poi:\n`
+              : `${dup.length} annotazioni riguardano atti dal ${CONFIG.annoDoppiaCopia} in poi:\n`)
+          + elenco
+          + `\n\nI registri sono ancora in archivio in doppia copia: `
+          + (dup.length === 1 ? `l'annotazione deve essere DUPLICATA` : `le annotazioni devono essere DUPLICATE`)
+          + ` dall'operatore anche sul secondo originale.\n`
+          + `Dopo l'importazione usa l'icona Copia sul bollino giallo e incolla in una cella vuota.\n\nProcedere con l'importazione?`;
+        const ok = await new Promise(res =>
+          showConfirm(msg, res, { okText: 'Ho capito, importa', cancelText: 'Annulla importazione' }));
+        if (!ok) return;
+      }
+
+      const noDate = document.getElementById('batch-no-date').checked;
+      const cityDate = noDate
+        ? `${CONFIG.defaultCity}, ` + ' '.repeat(15)
+        : `${CONFIG.defaultCity}, ${getDataOggi()}`;
+      const items = all;
+
+      const free = batchSlots();
+
+      let count = 0;
+      const overflow = [];
+      items.forEach(it => {
+        if (count >= free.length) return;
+        const idx = free[count++];
+        labels[idx] = { nota: it.nota, cityDate, atto: it.atto };
+        updateLabel(idx);
+        if (checkOverflow(idx, it.nota, cityDate, it.atto).hasOverflow) overflow.push(it.ref);
+      });
+
+      const remaining = batchSlots().length;
+      const posizioni = free.slice(0, count).map(i => i + 1);
+      let msg = `Importate ${etichette(count)}` + opt.origine;
+      if (count) msg += `\nInserite nelle etichette n. ${posizioni.join(', ')}.`;
+      msg += remaining
+        ? `\nPuoi caricare ancora ${etichette(remaining)} dalla n. ${batchStart()} alla n. 1.`
+        : `\nNessuna etichetta ancora disponibile dalla n. ${batchStart()} alla n. 1.`;
+      if (items.length > count) {
+        msg += `\n\n${opt.nonInseriti(items.length - count)} (etichette libere esaurite):\n`
+             + items.slice(count).map(it => it.ref).join('\n');
+      }
+      const dupInseriti = items.slice(0, count).filter(it => richiedeDoppiaCopia(it.attoExcel));
+      if (dupInseriti.length) {
+        msg += `\n\nDa duplicare sul secondo originale (bollino giallo a schermo): ${dupInseriti.length}\n`
+             + dupInseriti.map(it => it.ref).join('\n');
+      }
+      if (overflow.length) msg += '\n\nTesto troppo lungo per:\n' + overflow.join('\n');
+      if (opt.ignored.length) msg += '\n\nAttenzione, letta solo la prima riga:\n' + opt.ignored.join('\n');
+      if (opt.errors.length) msg += '\n\nFile non letti:\n' + opt.errors.join('\n');
+      alert(msg);
+      closeBatch();
+    }
+
+    // ============================================
+    // SETTINGS PANEL
+    // ============================================
+    function openSettings() {
+      document.getElementById('input-cols').value = CONFIG.cols;
+      document.getElementById('input-rows').value = CONFIG.rows;
+      document.getElementById('input-margin-top').value = CONFIG.marginTop;
+      document.getElementById('input-margin-right').value = CONFIG.marginRight;
+      document.getElementById('input-margin-bottom').value = CONFIG.marginBottom;
+      document.getElementById('input-margin-left').value = CONFIG.marginLeft;
+      document.getElementById('input-padding').value = CONFIG.cellPadding;
+      
+      updateGridPreview();
+      updatePaddingPreview();
+      
+      document.getElementById('settings-overlay').style.display = 'flex';
+    }
+
+    function closeSettings() {
+      document.getElementById('settings-overlay').style.display = 'none';
+    }
+
+    function applySettings() {
+      const newCols = parseInt(document.getElementById('input-cols').value);
+      const newRows = parseInt(document.getElementById('input-rows').value);
+      const newTotal = newCols * newRows;
+      const oldTotal = CONFIG.cols * CONFIG.rows;
+      
+      annullaCopia();
+
+      // Salva dati esistenti
+      const oldLabels = [...labels];
+      
+      // Aggiorna config
+      CONFIG.cols = newCols;
+      CONFIG.rows = newRows;
+      CONFIG.marginTop = parseFloat(document.getElementById('input-margin-top').value);
+      CONFIG.marginRight = parseFloat(document.getElementById('input-margin-right').value);
+      CONFIG.marginBottom = parseFloat(document.getElementById('input-margin-bottom').value);
+      CONFIG.marginLeft = parseFloat(document.getElementById('input-margin-left').value);
+      CONFIG.cellPadding = parseFloat(document.getElementById('input-padding').value);
+      
+      // Applica stili CSS
+      applyConfig();
+      
+      // Ricostruisci array labels
+      initLabels();
+      
+      // Ripristina dati nelle celle che esistono ancora
+      const maxCopy = Math.min(oldTotal, newTotal);
+      for (let i = 0; i < maxCopy; i++) {
+        labels[i] = oldLabels[i];
+      }
+      
+      // Ricrea griglia
+      createLabels();
+      closeSettings();
+    }
+
+    function updateGridPreview() {
+      const preview = document.getElementById('grid-preview');
+      const cols = parseInt(document.getElementById('input-cols').value) || 2;
+      const rows = parseInt(document.getElementById('input-rows').value) || 6;
+      
+      preview.className = `grid-icon cols-${cols} rows-${rows}`;
+      preview.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      preview.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+      
+      const total = cols * rows;
+      preview.innerHTML = '';
+      for (let i = 0; i < total; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'grid-cell';
+        preview.appendChild(cell);
+      }
+    }
+
+    function updatePaddingPreview() {
+      const preview = document.getElementById('padding-preview');
+      const padding = parseFloat(document.getElementById('input-padding').value) || 2;
+      const percentage = Math.min(40, padding * 3);
+      
+      preview.style.width = `${100 - percentage}%`;
+      preview.style.height = `${100 - percentage}%`;
+    }
+
+    // ============================================
+    // EVENT LISTENERS
+    // ============================================
+    document.getElementById('modal-form').addEventListener('submit', e => {
+      e.preventDefault();
+      saveLabel();
+    });
+
+    document.getElementById('cancel-btn').addEventListener('click', closeModal);
+    document.getElementById('delete-btn').addEventListener('click', deleteLabel);
+    document.getElementById('print-btn').addEventListener('click', () => window.print());
+    document.getElementById('reset-btn').addEventListener('click', resetAll);
+    document.getElementById('batch-btn').addEventListener('click', openBatch);
+    document.getElementById('batch-cancel').addEventListener('click', closeBatch);
+    // Usare un riquadro (o cliccarci sopra se è disattivato) lo rende attivo
+    document.getElementById('frame-single').addEventListener('click', () => {
+      if (batchActive !== 'single') setBatchActive('single');
+    });
+    document.getElementById('frame-multi').addEventListener('click', () => {
+      if (batchActive !== 'multi') setBatchActive('multi');
+    });
+    document.getElementById('batch-file').addEventListener('change', () => {
+      if (batchActive !== 'single') setBatchActive('single');
+      else updateBatchInfo();
+    });
+    document.getElementById('batch-file-multi').addEventListener('change', () => {
+      if (batchActive !== 'multi') setBatchActive('multi');
+      loadMultiFile();
+    });
+    document.getElementById('batch-start').addEventListener('input', updateBatchInfo);
+    document.getElementById('batch-start').addEventListener('change', () => {
+      if (startRaw() === null) document.getElementById('batch-start').value = batchStart();   // riporta tra 1 e il totale
+      updateBatchInfo();
+    });
+    document.getElementById('batch-from').addEventListener('input', updateBatchInfo);
+    document.getElementById('batch-to').addEventListener('input', updateBatchInfo);
+    document.getElementById('batch-apply').addEventListener('click', () => {
+      if (batchActive === null) { alert('Seleziona un file in uno dei due riquadri (Singola riga o Multiriga).'); return; }
+      if (startRaw() === null) { alert(`"Inizia dall'etichetta" deve essere un numero da 1 a ${labels.length}.`); return; }
+      if (batchActive === 'multi') {
+        if (!multiData) { alert('Seleziona prima un file Excel valido nel riquadro Multiriga.'); return; }
+        const r = multiRowsInRange();
+        if (r === null) { alert('Intervallo non valido: "Dalla riga" deve essere minore o uguale ad "Alla riga".'); return; }
+        const freeM = batchSlots().length;
+        if (r.span > freeM) {
+          alert(`L'intervallo comprende ${righe(r.span)}, ma puoi caricare ancora solo ${etichette(freeM)} (dalla n. ${batchStart()} alla n. 1).\nRiduci l'intervallo (al massimo ${freeM} righe).`);
+          return;
+        }
+        if (!r.rows.length) { alert('Nell\'intervallo scelto non ci sono righe con "atto" o "testo annot.".'); return; }
+        importMulti();
+        return;
+      }
+      const files = document.getElementById('batch-file').files;
+      if (!files.length) { alert('Seleziona prima uno o più file Excel.'); return; }
+      const free = batchSlots().length;
+      if (files.length > free) {
+        alert(`Hai selezionato ${files.length} file, ma puoi caricare ancora solo ${etichette(free)} (dalla n. ${batchStart()} alla n. 1).\nSelezionane al massimo ${free}.`);
+        return;
+      }
+      importBatch(files);
+    });
+
+    document.getElementById('clip-cancel').addEventListener('click', annullaCopia);
+    document.getElementById('settings-btn').addEventListener('click', openSettings);
+    document.getElementById('settings-cancel').addEventListener('click', closeSettings);
+    document.getElementById('settings-apply').addEventListener('click', applySettings);
+
+    document.getElementById('input-cols').addEventListener('input', updateGridPreview);
+    document.getElementById('input-rows').addEventListener('input', updateGridPreview);
+    document.getElementById('input-padding').addEventListener('input', updatePaddingPreview);
+
+    window.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        if (document.getElementById('overlay').style.display === 'flex') {
+          closeModal();
+        } else if (document.getElementById('batch-overlay').style.display === 'flex') {
+          closeBatch();
+        } else if (document.getElementById('settings-overlay').style.display === 'flex') {
+          closeSettings();
+        } else if (copiaIdx !== null) {
+          annullaCopia();
+        }
+      }
+    });
+
+    // ============================================
+    // INIT
+    // ============================================
+    document.getElementById('app-version').textContent = 'v' + APP_VERSION;
+    applyConfig();
+    initLabels();
+    createLabels();
+  </script>
+</body>
+</html>
